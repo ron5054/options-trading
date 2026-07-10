@@ -1,4 +1,4 @@
-import { getTradeDate } from './tradeDate'
+import { getTradeDate, isExpireDatePassed } from './tradeDate'
 import type { Trade } from '../types/trade'
 
 export type TradePositionInfo = {
@@ -17,8 +17,7 @@ type SellLot = {
   cost: number
 }
 
-const isExpired = (trade: Trade): boolean =>
-  trade.expireDate < new Date().toISOString().slice(0, 10)
+const isExpired = (trade: Trade): boolean => isExpireDatePassed(trade.expireDate)
 
 const sortByTradeDate = (a: Trade, b: Trade): number => {
   const dateCmp = getTradeDate(a).localeCompare(getTradeDate(b))

@@ -1,4 +1,5 @@
 import type { TradePositionInfo } from './matchPositions'
+import { isExpireDatePassed } from './tradeDate'
 import type { Trade } from '../types/trade'
 
 export type TradeStatus = 'ongoing' | 'closed' | 'done'
@@ -10,8 +11,7 @@ export const getTradeStatus = (
   const info = positionMap.get(trade.id)
   if (info) return info.status
 
-  const today = new Date().toISOString().slice(0, 10)
-  return trade.expireDate >= today ? 'ongoing' : 'done'
+  return isExpireDatePassed(trade.expireDate) ? 'done' : 'ongoing'
 }
 
 export const getStatusLabel = (status: TradeStatus): string => {
