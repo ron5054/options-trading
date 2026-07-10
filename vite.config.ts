@@ -14,4 +14,8 @@ const optionPricesApiPlugin = (): Plugin => ({
 
 export default defineConfig({
   plugins: [react(), optionPricesApiPlugin()],
+  preview: {
+    allowedHosts: true,
+    host: true,
+  },
 })
