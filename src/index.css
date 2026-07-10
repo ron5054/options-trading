@@ -918,7 +918,8 @@ header h1 {
     margin-bottom: 1rem;
   }
 
-  .card-trades {
+  .card-trades,
+  .card-stats {
     margin-bottom: 0;
     border-radius: 0;
     border-left: none;
@@ -926,12 +927,8 @@ header h1 {
     padding: 0.75rem 0 0;
   }
 
-  .card-stats {
-    margin: 0 1rem 1rem;
-    padding: 1rem;
-  }
-
-  .card-trades h2 {
+  .card-trades h2,
+  .card-stats h2 {
     padding: 0 1rem;
     margin-bottom: 0.75rem;
   }
