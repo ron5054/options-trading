@@ -1,0 +1,136 @@
+import type { NewTrade } from '../types/trade'
+
+type SeedTrade = NewTrade & { createdAt: number }
+
+const toTs = (date: string, time = '12:00:00'): number => {
+  const [year, month, day] = date.split('-').map(Number)
+  const [hours, minutes, seconds] = time.split(':').map(Number)
+  return Date.UTC(year, month - 1, day, hours, minutes, seconds)
+}
+
+export const seedTrades: SeedTrade[] = [
+  {
+    symbol: 'TQQQ',
+    strike: 77,
+    expireDate: '2026-07-10',
+    tradeDate: '2026-07-02',
+    type: 'call',
+    direction: 'sell',
+    quantity: 41,
+    cost: 1.2,
+    createdAt: toTs('2026-07-02', '22:33:23'),
+  },
+  {
+    symbol: 'NFLX',
+    strike: 80,
+    expireDate: '2026-07-17',
+    tradeDate: '2026-07-02',
+    type: 'call',
+    direction: 'sell',
+    quantity: 1,
+    cost: 2.85,
+    createdAt: toTs('2026-07-02', '22:21:58'),
+  },
+  {
+    symbol: 'SOXL',
+    strike: 169,
+    expireDate: '2026-07-10',
+    tradeDate: '2026-07-02',
+    type: 'put',
+    direction: 'sell',
+    quantity: 3,
+    cost: 12.8,
+    createdAt: toTs('2026-07-02', '19:18:07'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 78,
+    expireDate: '2026-07-02',
+    tradeDate: '2026-07-02',
+    type: 'call',
+    direction: 'buy',
+    quantity: 39,
+    cost: 0.04,
+    createdAt: toTs('2026-07-02', '18:46:47'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 79,
+    expireDate: '2026-07-02',
+    tradeDate: '2026-07-02',
+    type: 'call',
+    direction: 'buy',
+    quantity: 2,
+    cost: 0.03,
+    createdAt: toTs('2026-07-02', '18:31:50'),
+  },
+  {
+    symbol: 'METU',
+    strike: 26,
+    expireDate: '2026-07-24',
+    tradeDate: '2026-07-01',
+    type: 'call',
+    direction: 'sell',
+    quantity: 10,
+    cost: 0.8,
+    createdAt: toTs('2026-07-01', '16:36:12'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 77,
+    expireDate: '2026-07-02',
+    tradeDate: '2026-07-01',
+    type: 'put',
+    direction: 'sell',
+    quantity: 1,
+    cost: 1.5,
+    createdAt: toTs('2026-07-01', '16:36:05'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 79,
+    expireDate: '2026-07-02',
+    tradeDate: '2026-06-30',
+    type: 'call',
+    direction: 'sell',
+    quantity: 2,
+    cost: 2.03,
+    createdAt: toTs('2026-06-30', '16:45:24'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 77,
+    expireDate: '2026-06-26',
+    tradeDate: '2026-06-18',
+    type: 'put',
+    direction: 'sell',
+    quantity: 27,
+    cost: 1.73,
+    createdAt: toTs('2026-06-18', '18:42:35'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 76.5,
+    expireDate: '2026-06-18',
+    tradeDate: '2026-06-17',
+    type: 'put',
+    direction: 'sell',
+    quantity: 5,
+    cost: 1.37,
+    createdAt: toTs('2026-06-17', '22:45:11'),
+  },
+  {
+    symbol: 'TQQQ',
+    strike: 79,
+    expireDate: '2026-06-18',
+    tradeDate: '2026-06-17',
+    type: 'put',
+    direction: 'sell',
+    quantity: 5,
+    cost: 1.07,
+    createdAt: toTs('2026-06-17', '19:52:16'),
+  },
+]
+
+export const tradeKey = (trade: Pick<NewTrade, 'symbol' | 'strike' | 'expireDate' | 'type' | 'direction' | 'quantity' | 'cost'>): string =>
+  `${trade.symbol}|${trade.strike}|${trade.expireDate}|${trade.type}|${trade.direction}|${trade.quantity}|${trade.cost}`
