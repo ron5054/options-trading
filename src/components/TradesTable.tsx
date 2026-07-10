@@ -24,6 +24,7 @@ import type { Trade } from '../types/trade'
 
 type TradesTableProps = {
   trades: Trade[]
+  canEdit?: boolean
   onEdit: (trade: Trade) => void
   onClosePosition: (context: ClosePositionContext) => void
   onTradeDeleted: () => void
@@ -132,7 +133,13 @@ const RowActions = ({
   </div>
 )
 
-export const TradesTable = ({ trades, onEdit, onClosePosition, onTradeDeleted }: TradesTableProps) => {
+export const TradesTable = ({
+  trades,
+  canEdit = false,
+  onEdit,
+  onClosePosition,
+  onTradeDeleted,
+}: TradesTableProps) => {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [exchangeRate, setExchangeRate] = useState<UsdToIlsRate | null>(null)
@@ -335,7 +342,7 @@ export const TradesTable = ({ trades, onEdit, onClosePosition, onTradeDeleted }:
             <SortableHeader className="col-detail" field="lastPrice" label="Last Price" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
             <SortableHeader className="col-detail" field="realized" label="Realized" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
             <SortableHeader className="col-primary" field="total" label="Total" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
-            <th className="col-detail">Actions</th>
+            {canEdit && <th className="col-detail">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -416,7 +423,7 @@ export const TradesTable = ({ trades, onEdit, onClosePosition, onTradeDeleted }:
             const realizedLabel = showRealized
               ? formatCurrency(groupedRealizedPnl)
               : '—'
-            const actions = (
+            const actions = canEdit ? (
               <RowActions
                 isGrouped={isGrouped}
                 sourceTradesCount={sourceTrades.length}
@@ -428,7 +435,7 @@ export const TradesTable = ({ trades, onEdit, onClosePosition, onTradeDeleted }:
                 onEdit={onEdit}
                 onDelete={handleDelete}
               />
-            )
+            ) : null
 
             return (
             <Fragment key={trade.id}>
@@ -501,7 +508,7 @@ export const TradesTable = ({ trades, onEdit, onClosePosition, onTradeDeleted }:
               >
                 {formatCurrency(signedTotal)}
               </td>
-              <td className="col-detail">{actions}</td>
+              {canEdit && <td className="col-detail">{actions}</td>}
             </tr>
             {isExpanded && (
               <tr className="trade-detail-row">
@@ -551,7 +558,9 @@ export const TradesTable = ({ trades, onEdit, onClosePosition, onTradeDeleted }:
                         </dd>
                       </div>
                     </dl>
-                    <div className="trade-detail-actions">{actions}</div>
+                    {canEdit && (
+                      <div className="trade-detail-actions">{actions}</div>
+                    )}
                   </div>
                 </td>
               </tr>
