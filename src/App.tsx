@@ -9,6 +9,7 @@ import {
 import { MonthlyRevenueChart } from './components/MonthlyRevenueChart'
 import { TradesTable } from './components/TradesTable'
 import { useAuth } from './hooks/useAuth'
+import { useMediaQuery } from './hooks/useMediaQuery'
 import type { NewTrade, Trade } from './types/trade'
 
 const isDuplicateTrade = (existing: Trade, incoming: NewTrade): boolean =>
@@ -16,6 +17,7 @@ const isDuplicateTrade = (existing: Trade, incoming: NewTrade): boolean =>
 
 export const App = () => {
   const { user, isLoading: isAuthLoading, canEdit, signIn, signOut } = useAuth()
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const [trades, setTrades] = useState<Trade[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -100,16 +102,18 @@ export const App = () => {
         </div>
       </header>
 
-      <section className="card">
-        <h2>Monthly Revenue</h2>
-        {isLoading ? (
-          <p className="loading">Loading chart...</p>
-        ) : (
-          <MonthlyRevenueChart trades={trades} />
-        )}
-      </section>
+      {!isMobile && (
+        <section className="card">
+          <h2>Monthly Revenue</h2>
+          {isLoading ? (
+            <p className="loading">Loading chart...</p>
+          ) : (
+            <MonthlyRevenueChart trades={trades} />
+          )}
+        </section>
+      )}
 
-      <section className="card">
+      <section className="card card-trades">
         <h2>Your Trades</h2>
         {isLoading ? (
           <p className="loading">Loading trades...</p>

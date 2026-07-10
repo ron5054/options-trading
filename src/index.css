@@ -880,6 +880,34 @@ header h1 {
 }
 
 @media (max-width: 768px) {
+  .app {
+    padding: 1rem 0 1.5rem;
+    max-width: 100%;
+  }
+
+  .app-header {
+    padding: 0 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-trades {
+    margin-bottom: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 0.75rem 0 0;
+  }
+
+  .card-trades h2 {
+    padding: 0 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .table-toolbar {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
   .trades-table .col-detail {
     display: none;
   }
@@ -898,6 +926,16 @@ header h1 {
     font-size: 0.85rem;
   }
 
+  .trades-table th:first-child,
+  .trades-table td:first-child {
+    padding-left: 1rem;
+  }
+
+  .trades-table th:last-child,
+  .trades-table td:last-child {
+    padding-right: 1rem;
+  }
+
   .trade-detail-row td {
     padding: 0 0.5rem 0.75rem;
     border-bottom: 1px solid var(--border);
@@ -906,6 +944,14 @@ header h1 {
 
   .trades-table tfoot .mobile-footer-row td {
     padding: 0.65rem 0.5rem;
+  }
+
+  .trades-table tfoot .mobile-footer-row td:first-child {
+    padding-left: 1rem;
+  }
+
+  .trades-table tfoot .mobile-footer-row td:last-child {
+    padding-right: 1rem;
   }
 }
 
