@@ -9,7 +9,7 @@ import {
 import { MonthlyRevenueChart } from './components/MonthlyRevenueChart'
 import { TradesTable } from './components/TradesTable'
 import { useAuth } from './hooks/useAuth'
-import { useMediaQuery } from './hooks/useMediaQuery'
+import { useHashPage } from './hooks/useHashPage'
 import type { NewTrade, Trade } from './types/trade'
 
 const isDuplicateTrade = (existing: Trade, incoming: NewTrade): boolean =>
@@ -17,7 +17,7 @@ const isDuplicateTrade = (existing: Trade, incoming: NewTrade): boolean =>
 
 export const App = () => {
   const { user, isLoading: isAuthLoading, canEdit, signIn, signOut } = useAuth()
-  const isMobile = useMediaQuery('(max-width: 768px)')
+  const { page, setPage } = useHashPage()
   const [trades, setTrades] = useState<Trade[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -81,6 +81,22 @@ export const App = () => {
         <div>
           <h1>Options Trade Tracker</h1>
           <p className="subtitle">Public view · owner can edit when signed in</p>
+          <nav className="app-nav" aria-label="Main">
+            <button
+              type="button"
+              className={`nav-link ${page === 'trades' ? 'active' : ''}`}
+              onClick={() => setPage('trades')}
+            >
+              Trades
+            </button>
+            <button
+              type="button"
+              className={`nav-link ${page === 'stats' ? 'active' : ''}`}
+              onClick={() => setPage('stats')}
+            >
+              Statistics
+            </button>
+          </nav>
         </div>
         <div className="header-actions">
           <AuthBar
@@ -90,7 +106,7 @@ export const App = () => {
             onSignIn={signIn}
             onSignOut={signOut}
           />
-          {canEdit && (
+          {canEdit && page === 'trades' && (
             <button
               type="button"
               className="add-trade-btn"
@@ -102,8 +118,8 @@ export const App = () => {
         </div>
       </header>
 
-      {!isMobile && (
-        <section className="card">
+      {page === 'stats' ? (
+        <section className="card card-stats">
           <h2>Monthly Revenue</h2>
           {isLoading ? (
             <p className="loading">Loading chart...</p>
@@ -111,22 +127,22 @@ export const App = () => {
             <MonthlyRevenueChart trades={trades} />
           )}
         </section>
+      ) : (
+        <section className="card card-trades">
+          <h2>Your Trades</h2>
+          {isLoading ? (
+            <p className="loading">Loading trades...</p>
+          ) : (
+            <TradesTable
+              trades={trades}
+              canEdit={canEdit}
+              onEdit={handleEdit}
+              onClosePosition={handleClosePosition}
+              onTradeDeleted={loadTrades}
+            />
+          )}
+        </section>
       )}
-
-      <section className="card card-trades">
-        <h2>Your Trades</h2>
-        {isLoading ? (
-          <p className="loading">Loading trades...</p>
-        ) : (
-          <TradesTable
-            trades={trades}
-            canEdit={canEdit}
-            onEdit={handleEdit}
-            onClosePosition={handleClosePosition}
-            onTradeDeleted={loadTrades}
-          />
-        )}
-      </section>
 
       {canEdit && (
         <TradeDrawer
