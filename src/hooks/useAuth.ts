@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
-const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL ?? '').trim().toLowerCase()
+const ownerEmail = (
+  import.meta.env.VITE_OWNER_EMAIL || 'ron5054@gmail.com'
+)
+  .trim()
+  .toLowerCase()
 
 export const isOwnerUser = (user: User | null | undefined): boolean => {
   if (!user?.email || !ownerEmail) return false
