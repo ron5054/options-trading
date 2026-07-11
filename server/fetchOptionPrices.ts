@@ -67,6 +67,7 @@ export const fetchOptionPrices = async (
   const groups = new Map<string, OptionPriceRequest[]>()
   const expirationCache = new Map<string, Date[]>()
   const chainCache = new Map<string, Awaited<ReturnType<typeof yahooFinance.options>> | null>()
+  const requestErrors = new Map<string, string>()
 
   for (const request of requests) {
     const key = `${request.symbol}|${request.expireDate}`
@@ -88,12 +89,23 @@ export const fetchOptionPrices = async (
 
         if (!expiration) {
           chainCache.set(key, null)
+          for (const request of groupRequests) {
+            requestErrors.set(
+              request.id,
+              `No Yahoo expiration matching ${expireDate} for ${symbol}`,
+            )
+          }
         } else {
           const options = await yahooFinance.options(symbol, { date: expiration })
           chainCache.set(key, options)
         }
-      } catch {
+      } catch (error) {
         chainCache.set(key, null)
+        const message =
+          error instanceof Error ? error.message : 'Yahoo Finance request failed'
+        for (const request of groupRequests) {
+          requestErrors.set(request.id, message)
+        }
       }
     }
   }
@@ -123,11 +135,15 @@ export const fetchOptionPrices = async (
   return requests.map((request) => {
     const contractKey = `${request.symbol}|${request.expireDate}|${request.strike}|${request.type}`
     const lastPrice = priceCache.get(contractKey) ?? null
+    const fetchError = requestErrors.get(request.id)
 
     return {
       id: request.id,
       lastPrice,
-      error: lastPrice === null ? 'Price not found' : undefined,
+      error:
+        lastPrice === null
+          ? (fetchError ?? 'Price not found')
+          : undefined,
     }
   })
 }

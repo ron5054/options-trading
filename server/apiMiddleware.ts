@@ -50,7 +50,8 @@ export const optionPricesApiMiddleware = (
   res: ServerResponse,
   next: () => void,
 ): void => {
-  if (req.url !== '/api/option-prices') {
+  const path = req.url?.split('?')[0]
+  if (path !== '/api/option-prices') {
     next()
     return
   }

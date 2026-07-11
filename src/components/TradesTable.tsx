@@ -206,9 +206,14 @@ export const TradesTable = ({
       setLastPrices(prices)
       setPricesUpdatedAt(new Date().toLocaleTimeString())
 
-      const missing = results.filter((result) => result.lastPrice == null).length
-      if (missing > 0) {
-        setPriceError(`${missing} ongoing contract(s) had no price available`)
+      const failed = results.filter((result) => result.lastPrice == null)
+      if (failed.length > 0) {
+        const detail = failed.find((result) => result.error)?.error
+        setPriceError(
+          detail
+            ? `${failed.length} contract(s) failed: ${detail}`
+            : `${failed.length} ongoing contract(s) had no price available`,
+        )
       }
     } catch {
       setPriceError('Failed to fetch option prices from Yahoo Finance')
