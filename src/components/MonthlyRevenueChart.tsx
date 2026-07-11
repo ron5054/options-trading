@@ -82,10 +82,10 @@ const ChartTooltip = ({ active, payload, exchangeRate }: TooltipProps) => {
   )
 }
 
-const formatYAxis = (value: number): string =>
-  new Intl.NumberFormat('en-US', {
+const formatYAxisIls = (value: number): string =>
+  new Intl.NumberFormat('he-IL', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'ILS',
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value)
@@ -95,6 +95,14 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
   const [rateError, setRateError] = useState<string | null>(null)
 
   const data = useMemo(() => getMonthlyRevenue(trades), [trades])
+
+  const chartData = useMemo(() => {
+    if (!exchangeRate) return []
+    return data.map((entry) => ({
+      ...entry,
+      afterTaxIls: entry.afterTax * exchangeRate.rate,
+    }))
+  }, [data, exchangeRate])
 
   useEffect(() => {
     fetchUsdToIls()
@@ -110,22 +118,31 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
     )
   }
 
+  if (!exchangeRate) {
+    return (
+      <div>
+        {rateError ? (
+          <p className="price-error">{rateError}</p>
+        ) : (
+          <p className="loading">Loading ILS exchange rate...</p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
-      {exchangeRate && (
-        <p className="chart-rate-note">
-          ILS amounts use BOI rate {exchangeRate.rate.toFixed(2)} ({exchangeRate.date})
-        </p>
-      )}
-      {rateError && <p className="price-error">{rateError}</p>}
+      <p className="chart-rate-note">
+        After tax (ILS) · BOI rate {exchangeRate.rate.toFixed(2)} ({exchangeRate.date})
+      </p>
       <div className="chart-container">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="label"
               tickFormatter={(value, index) => {
-                const entry = data[index]
+                const entry = chartData[index]
                 return entry ? `${value} (${entry.tradeCount} trades)` : String(value)
               }}
               tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
@@ -133,7 +150,7 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
               tickLine={false}
             />
             <YAxis
-              tickFormatter={formatYAxis}
+              tickFormatter={formatYAxisIls}
               tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
               axisLine={false}
               tickLine={false}
@@ -143,11 +160,11 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
               content={<ChartTooltip exchangeRate={exchangeRate} />}
               cursor={{ fill: 'rgba(255,255,255,0.04)' }}
             />
-            <Bar dataKey="afterTax" radius={[4, 4, 0, 0]}>
-              {data.map((entry) => (
+            <Bar dataKey="afterTaxIls" radius={[4, 4, 0, 0]}>
+              {chartData.map((entry) => (
                 <Cell
                   key={entry.month}
-                  fill={entry.afterTax >= 0 ? 'var(--buy)' : 'var(--sell)'}
+                  fill={entry.afterTaxIls >= 0 ? 'var(--buy)' : 'var(--sell)'}
                 />
               ))}
             </Bar>
