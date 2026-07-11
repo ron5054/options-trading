@@ -1,7 +1,4 @@
-import YahooFinance from 'yahoo-finance2'
 import type { OptionType } from '../src/types/trade'
-
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
 
 export type OptionPriceRequest = {
   id: string
@@ -17,133 +14,151 @@ export type OptionPriceResult = {
   error?: string
 }
 
+type CboeOption = {
+  option: string
+  last_trade_price?: number | null
+  bid?: number | null
+  ask?: number | null
+}
+
+type CboeOptionsResponse = {
+  data?: {
+    options?: CboeOption[]
+  }
+}
+
 const strikesMatch = (a: number, b: number): boolean =>
   Math.abs(a - b) < 0.001
 
-const toDateKey = (date: Date): string => {
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+/** OCC option root symbol: SYMBOL + YYMMDD + C/P + strike*1000 (8 digits). */
+export const toOccOptionSymbol = (
+  symbol: string,
+  expireDate: string,
+  type: OptionType,
+  strike: number,
+): string => {
+  const [year, month, day] = expireDate.split('-')
+  const yymmdd = `${year.slice(2)}${month}${day}`
+  const callPut = type === 'call' ? 'C' : 'P'
+  const strikePart = String(Math.round(strike * 1000)).padStart(8, '0')
+  return `${symbol.toUpperCase()}${yymmdd}${callPut}${strikePart}`
 }
 
-const findLastPrice = (
-  options: Awaited<ReturnType<typeof yahooFinance.options>>,
-  strike: number,
-  type: OptionType,
-): number | null => {
-  const chain = options.options[0]
-  if (!chain) return null
-
-  const contracts = type === 'call' ? chain.calls : chain.puts
-  const match = contracts.find((contract) => strikesMatch(contract.strike, strike))
-
-  if (match?.lastPrice != null && !Number.isNaN(match.lastPrice)) {
-    return match.lastPrice
+const pickPrice = (contract: CboeOption): number | null => {
+  if (contract.last_trade_price != null && !Number.isNaN(contract.last_trade_price)) {
+    return contract.last_trade_price
   }
+
+  const bid = contract.bid
+  const ask = contract.ask
+  if (
+    bid != null &&
+    ask != null &&
+    !Number.isNaN(bid) &&
+    !Number.isNaN(ask) &&
+    bid > 0 &&
+    ask > 0
+  ) {
+    return (bid + ask) / 2
+  }
+
+  if (ask != null && !Number.isNaN(ask) && ask > 0) return ask
+  if (bid != null && !Number.isNaN(bid) && bid > 0) return bid
 
   return null
 }
 
-const getExpirationDate = async (
-  symbol: string,
-  expireDate: string,
-  expirationCache: Map<string, Date[]>,
-): Promise<Date | null> => {
-  if (!expirationCache.has(symbol)) {
-    const overview = await yahooFinance.options(symbol)
-    expirationCache.set(symbol, overview.expirationDates)
+const fetchCboeChain = async (symbol: string): Promise<CboeOption[]> => {
+  const response = await fetch(
+    `https://cdn.cboe.com/api/global/delayed_quotes/options/${encodeURIComponent(symbol.toUpperCase())}.json`,
+    {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'options-trade-tracker/1.0',
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(`CBOE ${symbol} returned ${response.status}`)
   }
 
-  const expirationDates = expirationCache.get(symbol) ?? []
-  return (
-    expirationDates.find((date) => toDateKey(date) === expireDate) ?? null
-  )
+  const payload = (await response.json()) as CboeOptionsResponse
+  return payload.data?.options ?? []
 }
 
 export const fetchOptionPrices = async (
   requests: OptionPriceRequest[],
 ): Promise<OptionPriceResult[]> => {
-  const groups = new Map<string, OptionPriceRequest[]>()
-  const expirationCache = new Map<string, Date[]>()
-  const chainCache = new Map<string, Awaited<ReturnType<typeof yahooFinance.options>> | null>()
-  const requestErrors = new Map<string, string>()
-
+  const bySymbol = new Map<string, OptionPriceRequest[]>()
   for (const request of requests) {
-    const key = `${request.symbol}|${request.expireDate}`
-    const group = groups.get(key) ?? []
+    const symbol = request.symbol.toUpperCase()
+    const group = bySymbol.get(symbol) ?? []
     group.push(request)
-    groups.set(key, group)
+    bySymbol.set(symbol, group)
   }
 
-  for (const [key, groupRequests] of groups) {
-    const [symbol, expireDate] = key.split('|')
+  const chainBySymbol = new Map<string, CboeOption[] | null>()
+  const symbolErrors = new Map<string, string>()
 
-    if (!chainCache.has(key)) {
-      try {
-        const expiration = await getExpirationDate(
-          symbol,
-          expireDate,
-          expirationCache,
-        )
-
-        if (!expiration) {
-          chainCache.set(key, null)
-          for (const request of groupRequests) {
-            requestErrors.set(
-              request.id,
-              `No Yahoo expiration matching ${expireDate} for ${symbol}`,
-            )
-          }
-        } else {
-          const options = await yahooFinance.options(symbol, { date: expiration })
-          chainCache.set(key, options)
-        }
-      } catch (error) {
-        chainCache.set(key, null)
-        const message =
-          error instanceof Error ? error.message : 'Yahoo Finance request failed'
-        for (const request of groupRequests) {
-          requestErrors.set(request.id, message)
-        }
-      }
-    }
-  }
-
-  const priceCache = new Map<string, number | null>()
-
-  for (const [key, groupRequests] of groups) {
-    const options = chainCache.get(key)
-
-    for (const request of groupRequests) {
-      const contractKey = `${key}|${request.strike}|${request.type}`
-
-      if (priceCache.has(contractKey)) continue
-
-      if (!options) {
-        priceCache.set(contractKey, null)
-        continue
-      }
-
-      priceCache.set(
-        contractKey,
-        findLastPrice(options, request.strike, request.type),
+  for (const symbol of bySymbol.keys()) {
+    try {
+      chainBySymbol.set(symbol, await fetchCboeChain(symbol))
+    } catch (error) {
+      chainBySymbol.set(symbol, null)
+      symbolErrors.set(
+        symbol,
+        error instanceof Error ? error.message : 'CBOE request failed',
       )
     }
   }
 
   return requests.map((request) => {
-    const contractKey = `${request.symbol}|${request.expireDate}|${request.strike}|${request.type}`
-    const lastPrice = priceCache.get(contractKey) ?? null
-    const fetchError = requestErrors.get(request.id)
+    const symbol = request.symbol.toUpperCase()
+    const chain = chainBySymbol.get(symbol)
+    const symbolError = symbolErrors.get(symbol)
 
+    if (!chain) {
+      return {
+        id: request.id,
+        lastPrice: null,
+        error: symbolError ?? 'Option chain unavailable',
+      }
+    }
+
+    const occ = toOccOptionSymbol(
+      symbol,
+      request.expireDate,
+      request.type,
+      request.strike,
+    )
+    const exact = chain.find((contract) => contract.option === occ)
+    const contract =
+      exact ??
+      chain.find((row) => {
+        const match = row.option.match(/(\d{6})([CP])(\d{8})$/)
+        if (!match) return false
+        const [, yymmdd, cp, strikeRaw] = match
+        const [year, month, day] = request.expireDate.split('-')
+        const expected = `${year.slice(2)}${month}${day}`
+        const typeOk = (request.type === 'call' ? 'C' : 'P') === cp
+        const strikeOk = strikesMatch(Number(strikeRaw) / 1000, request.strike)
+        return yymmdd === expected && typeOk && strikeOk
+      })
+
+    if (!contract) {
+      return {
+        id: request.id,
+        lastPrice: null,
+        error: `No CBOE quote for ${occ}`,
+      }
+    }
+
+    const lastPrice = pickPrice(contract)
     return {
       id: request.id,
       lastPrice,
-      error:
-        lastPrice === null
-          ? (fetchError ?? 'Price not found')
-          : undefined,
+      error: lastPrice === null ? `No trade/bid/ask for ${occ}` : undefined,
     }
   })
 }
