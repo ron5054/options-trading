@@ -10,12 +10,12 @@ export const calcTotal = (trade: Trade): number =>
 export const calcSignedTotal = (trade: Trade): number =>
   trade.direction === 'sell' ? calcTotal(trade) : -calcTotal(trade)
 
-/** Open short notional: strike × open contracts × 100 */
+/** Open short put notional: strike × open contracts × 100 (calls are covered) */
 export const calcOpenCapitalAtRisk = (trades: Trade[]): number => {
   const positionMap = buildPositionMap(trades)
 
   return trades.reduce((sum, trade) => {
-    if (!isOpenShort(trade, positionMap)) return sum
+    if (trade.type !== 'put' || !isOpenShort(trade, positionMap)) return sum
     const openQty = positionMap.get(trade.id)?.openQty ?? 0
     return sum + trade.strike * openQty * 100
   }, 0)

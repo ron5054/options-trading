@@ -140,7 +140,7 @@ export const App = () => {
                   {formatCurrency(capitalAtRisk)}
                 </span>
                 <span className="stat-total-note">
-                  Open short notional (strike × contracts × 100)
+                  Open short puts (strike × contracts × 100)
                 </span>
               </div>
               <h3 className="stats-section-title">Monthly Revenue</h3>
