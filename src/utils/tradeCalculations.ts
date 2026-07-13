@@ -1,3 +1,4 @@
+import { buildPositionMap, isOpenShort } from './matchPositions'
 import type { Trade } from '../types/trade'
 
 export const TAX_RATE = 0.25
@@ -8,6 +9,17 @@ export const calcTotal = (trade: Trade): number =>
 
 export const calcSignedTotal = (trade: Trade): number =>
   trade.direction === 'sell' ? calcTotal(trade) : -calcTotal(trade)
+
+/** Open short notional: strike × open contracts × 100 */
+export const calcOpenCapitalAtRisk = (trades: Trade[]): number => {
+  const positionMap = buildPositionMap(trades)
+
+  return trades.reduce((sum, trade) => {
+    if (!isOpenShort(trade, positionMap)) return sum
+    const openQty = positionMap.get(trade.id)?.openQty ?? 0
+    return sum + trade.strike * openQty * 100
+  }, 0)
+}
 
 export type TradeSummary = {
   netTotal: number
