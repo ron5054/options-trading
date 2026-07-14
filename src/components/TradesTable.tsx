@@ -15,12 +15,14 @@ import {
 } from '../utils/sortTrades'
 import { toDisplayTrades, getGroupedTradeDateLabel } from '../utils/groupTrades'
 import {
+  calcOpenCapitalAtRisk,
   calcSignedTotal,
   calcTradeSummary,
   formatCurrency,
   formatIls,
 } from '../utils/tradeCalculations'
 import type { Trade } from '../types/trade'
+import { TaxCashCard } from './TaxCashCard'
 
 type TradesTableProps = {
   trades: Trade[]
@@ -172,6 +174,11 @@ export const TradesTable = ({
 
   const positionMap = useMemo(() => buildPositionMap(trades), [trades])
 
+  const capitalAtRisk = useMemo(
+    () => calcOpenCapitalAtRisk(trades),
+    [trades],
+  )
+
   const filteredTrades = useMemo(() => {
     if (statusFilter === 'all') return trades
     return trades.filter(
@@ -267,14 +274,38 @@ export const TradesTable = ({
 
   if (trades.length === 0) {
     return (
-      <div className="empty-state">
-        <p>No trades saved yet. Add your first option trade above.</p>
+      <div>
+        <div className="trades-stats-row">
+          <div className="stat-total">
+            <span className="stat-total-label">Capital at risk</span>
+            <span className="stat-total-value">{formatCurrency(0)}</span>
+            <span className="stat-total-note">
+              Open short puts (strike × contracts × 100)
+            </span>
+          </div>
+          <TaxCashCard canEdit={canEdit} />
+        </div>
+        <div className="empty-state">
+          <p>No trades saved yet. Add your first option trade above.</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div>
+      <div className="trades-stats-row">
+        <div className="stat-total">
+          <span className="stat-total-label">Capital at risk</span>
+          <span className="stat-total-value">
+            {formatCurrency(capitalAtRisk)}
+          </span>
+          <span className="stat-total-note">
+            Open short puts (strike × contracts × 100)
+          </span>
+        </div>
+        <TaxCashCard canEdit={canEdit} />
+      </div>
       <div className="table-toolbar">
         <div className="status-filter">
           <span className="status-filter-label">Status</span>

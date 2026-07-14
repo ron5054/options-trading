@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { seedTrades, tradeKey } from './data/seedTrades'
 import { getAllTrades, seedTradesDeduped } from './db/trades'
 import { AuthBar } from './components/AuthBar'
@@ -10,10 +10,6 @@ import { MonthlyRevenueChart } from './components/MonthlyRevenueChart'
 import { TradesTable } from './components/TradesTable'
 import { useAuth } from './hooks/useAuth'
 import { useHashPage } from './hooks/useHashPage'
-import {
-  calcOpenCapitalAtRisk,
-  formatCurrency,
-} from './utils/tradeCalculations'
 import type { NewTrade, Trade } from './types/trade'
 
 const isDuplicateTrade = (existing: Trade, incoming: NewTrade): boolean =>
@@ -79,11 +75,6 @@ export const App = () => {
     void loadTrades()
   }
 
-  const capitalAtRisk = useMemo(
-    () => calcOpenCapitalAtRisk(trades),
-    [trades],
-  )
-
   return (
     <div className="app">
       <header className="app-header">
@@ -129,23 +120,11 @@ export const App = () => {
 
       {page === 'stats' ? (
         <section className="card card-stats">
-          <h2>Statistics</h2>
+          <h2>Monthly Revenue</h2>
           {isLoading ? (
-            <p className="loading">Loading...</p>
+            <p className="loading">Loading chart...</p>
           ) : (
-            <>
-              <div className="stat-total">
-                <span className="stat-total-label">Capital at risk</span>
-                <span className="stat-total-value">
-                  {formatCurrency(capitalAtRisk)}
-                </span>
-                <span className="stat-total-note">
-                  Open short puts (strike × contracts × 100)
-                </span>
-              </div>
-              <h3 className="stats-section-title">Monthly Revenue</h3>
-              <MonthlyRevenueChart trades={trades} />
-            </>
+            <MonthlyRevenueChart trades={trades} />
           )}
         </section>
       ) : (

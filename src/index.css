@@ -764,13 +764,22 @@ header h1 {
   padding: 2rem 1rem;
 }
 
+.trades-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .stat-total {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  margin-bottom: 1.75rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--border);
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
 }
 
 .stat-total-label {
@@ -779,7 +788,7 @@ header h1 {
 }
 
 .stat-total-value {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -790,10 +799,43 @@ header h1 {
   color: var(--text-muted);
 }
 
-.stats-section-title {
+.tax-cash-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tax-cash-edit {
+  flex-shrink: 0;
+}
+
+.tax-cash-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tax-cash-form input {
+  width: 9rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
   font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tax-cash-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.tax-cash-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--sell);
 }
 
 .chart-container {
@@ -968,6 +1010,17 @@ header h1 {
   .table-toolbar {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .stat-total {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .trades-stats-row {
+    grid-template-columns: 1fr;
+    margin-left: 1rem;
+    margin-right: 1rem;
   }
 
   .trades-table .col-detail {
