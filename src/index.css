@@ -765,12 +765,17 @@ header h1 {
 }
 
 .trades-stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin: 0 0 1rem;
   padding: 0 0 1rem;
   border-bottom: 1px solid var(--border);
+}
+
+.trades-stats-row > * {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .stat-total {
@@ -830,6 +835,34 @@ header h1 {
 .tax-cash-form input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.tax-cash-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tax-cash-sep {
+  margin: 0 0.35rem;
+}
+
+.tax-cash-warning {
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.tax-cash-warn .stat-total-value {
+  color: #fca5a5;
 }
 
 .tax-cash-error {
@@ -1018,7 +1051,6 @@ header h1 {
   }
 
   .trades-stats-row {
-    grid-template-columns: 1fr;
     margin-left: 1rem;
     margin-right: 1rem;
   }

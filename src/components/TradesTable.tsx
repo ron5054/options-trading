@@ -179,6 +179,11 @@ export const TradesTable = ({
     [trades],
   )
 
+  const taxOwedIls = useMemo(() => {
+    if (!exchangeRate) return null
+    return calcTradeSummary(trades).tax * exchangeRate.rate
+  }, [trades, exchangeRate])
+
   const filteredTrades = useMemo(() => {
     if (statusFilter === 'all') return trades
     return trades.filter(
@@ -283,7 +288,7 @@ export const TradesTable = ({
               Open short puts (strike × contracts × 100)
             </span>
           </div>
-          <TaxCashCard canEdit={canEdit} />
+          {canEdit && <TaxCashCard canEdit={canEdit} taxOwedIls={taxOwedIls} />}
         </div>
         <div className="empty-state">
           <p>No trades saved yet. Add your first option trade above.</p>
@@ -304,7 +309,7 @@ export const TradesTable = ({
             Open short puts (strike × contracts × 100)
           </span>
         </div>
-        <TaxCashCard canEdit={canEdit} />
+        {canEdit && <TaxCashCard canEdit={canEdit} taxOwedIls={taxOwedIls} />}
       </div>
       <div className="table-toolbar">
         <div className="status-filter">

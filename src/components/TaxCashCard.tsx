@@ -4,9 +4,11 @@ import { formatIls } from '../utils/tradeCalculations'
 
 type TaxCashCardProps = {
   canEdit: boolean
+  /** Estimated tax due in ILS (25% of net × FX), or null while rate loads */
+  taxOwedIls: number | null
 }
 
-export const TaxCashCard = ({ canEdit }: TaxCashCardProps) => {
+export const TaxCashCard = ({ canEdit, taxOwedIls }: TaxCashCardProps) => {
   const [amountIls, setAmountIls] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [isEditing, setIsEditing] = useState(false)
@@ -25,7 +27,7 @@ export const TaxCashCard = ({ canEdit }: TaxCashCardProps) => {
       })
       .catch(() => {
         if (!mounted) return
-        setError('Could not load tax cash')
+        setError('Could not load tax deposit')
       })
       .finally(() => {
         if (mounted) setIsLoading(false)
@@ -73,9 +75,15 @@ export const TaxCashCard = ({ canEdit }: TaxCashCardProps) => {
     }
   }
 
+  const remainingIls =
+    amountIls !== null && taxOwedIls !== null ? amountIls - taxOwedIls : null
+  const shortfallIls =
+    remainingIls !== null && remainingIls < 0 ? -remainingIls : 0
+  const needsMore = shortfallIls > 0
+
   return (
-    <div className="stat-total tax-cash">
-      <span className="stat-total-label">Tax cash (ILS)</span>
+    <div className={`stat-total tax-cash ${needsMore ? 'tax-cash-warn' : ''}`}>
+      <span className="stat-total-label">Tax deposit (ILS)</span>
       {isLoading ? (
         <span className="stat-total-note">Loading…</span>
       ) : isEditing ? (
@@ -87,7 +95,7 @@ export const TaxCashCard = ({ canEdit }: TaxCashCardProps) => {
             min="0"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            aria-label="Tax cash in ILS"
+            aria-label="Tax deposit in ILS"
             autoFocus
           />
           <button type="submit" className="auth-btn" disabled={isSaving}>
@@ -118,9 +126,31 @@ export const TaxCashCard = ({ canEdit }: TaxCashCardProps) => {
           )}
         </div>
       )}
-      <span className="stat-total-note">
-        ILS cash set aside to pay taxes
-      </span>
+      {taxOwedIls !== null && remainingIls !== null ? (
+        <div className="tax-cash-breakdown">
+          <span>
+            Tax due {formatIls(taxOwedIls)}
+            <span className="tax-cash-sep">·</span>
+            Left{' '}
+            <span
+              className={
+                remainingIls >= 0 ? 'total-positive' : 'total-negative'
+              }
+            >
+              {formatIls(remainingIls)}
+            </span>
+          </span>
+          {needsMore && (
+            <p className="tax-cash-warning" role="status">
+              Deposit short — add at least {formatIls(shortfallIls)} more
+            </p>
+          )}
+        </div>
+      ) : (
+        !isLoading && (
+          <span className="stat-total-note">Loading tax due…</span>
+        )
+      )}
       {error && <p className="tax-cash-error">{error}</p>}
     </div>
   )
