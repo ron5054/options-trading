@@ -865,6 +865,59 @@ header h1 {
   color: #fca5a5;
 }
 
+.tax-cash-history {
+  margin-top: 0.5rem;
+}
+
+.tax-cash-history-toggle {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tax-cash-history-toggle:hover {
+  color: var(--text);
+}
+
+.tax-cash-history-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.tax-cash-history-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.8rem;
+}
+
+.tax-cash-history-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.tax-cash-history-date {
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.tax-cash-history-delete {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+}
+
 .tax-cash-error {
   margin: 0.25rem 0 0;
   font-size: 0.8rem;

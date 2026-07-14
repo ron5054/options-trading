@@ -1,43 +1,61 @@
 import { supabase } from '../lib/supabase'
 
-export type TaxCash = {
+export type TaxCashDeposit = {
+  id: string
   amountIls: number
-  updatedAt: string
+  note: string | null
+  createdAt: string
 }
 
-type TaxCashRow = {
-  id: number
+type TaxCashDepositRow = {
+  id: string
   amount_ils: number
-  updated_at: string
+  note: string | null
+  created_at: string
 }
 
-const toTaxCash = (row: TaxCashRow): TaxCash => ({
+const toDeposit = (row: TaxCashDepositRow): TaxCashDeposit => ({
+  id: row.id,
   amountIls: Number(row.amount_ils),
-  updatedAt: row.updated_at,
+  note: row.note,
+  createdAt: row.created_at,
 })
 
-export const getTaxCash = async (): Promise<TaxCash> => {
+export const getTaxCashDeposits = async (): Promise<TaxCashDeposit[]> => {
   const { data, error } = await supabase
-    .from('tax_cash')
+    .from('tax_cash_deposits')
     .select('*')
-    .eq('id', 1)
-    .single()
+    .order('created_at', { ascending: false })
 
   if (error) throw error
-  return toTaxCash(data as TaxCashRow)
+  return ((data as TaxCashDepositRow[]) ?? []).map(toDeposit)
 }
 
-export const updateTaxCash = async (amountIls: number): Promise<TaxCash> => {
+export const sumTaxCashDeposits = (deposits: TaxCashDeposit[]): number =>
+  deposits.reduce((sum, deposit) => sum + deposit.amountIls, 0)
+
+export const addTaxCashDeposit = async (
+  amountIls: number,
+  note?: string,
+): Promise<TaxCashDeposit> => {
   const { data, error } = await supabase
-    .from('tax_cash')
-    .update({
+    .from('tax_cash_deposits')
+    .insert({
       amount_ils: amountIls,
-      updated_at: new Date().toISOString(),
+      note: note?.trim() || null,
     })
-    .eq('id', 1)
     .select()
     .single()
 
   if (error) throw error
-  return toTaxCash(data as TaxCashRow)
+  return toDeposit(data as TaxCashDepositRow)
+}
+
+export const deleteTaxCashDeposit = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('tax_cash_deposits')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
 }
