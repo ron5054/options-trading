@@ -42,8 +42,8 @@ export const calcTradeSummary = (trades: Trade[]): TradeSummary => {
   )
   const commissions = contractCount * COMMISSION_PER_CONTRACT
   const netAfterCommissions = netTotal - commissions
-  const tax = netAfterCommissions > 0 ? netAfterCommissions * TAX_RATE : 0
-  const afterTax = netAfterCommissions - tax
+  const tax = netTotal > 0 ? netTotal * TAX_RATE : 0
+  const afterTax = netTotal - commissions - tax
 
   return {
     netTotal,

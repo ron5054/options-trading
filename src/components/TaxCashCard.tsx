@@ -10,7 +10,7 @@ import { formatIls } from '../utils/tradeCalculations'
 
 type TaxCashCardProps = {
   canEdit: boolean
-  /** Estimated tax due in ILS (25% of net × FX), or null while rate loads */
+  /** Estimated tax due in ILS (25% of net P&L × FX), or null while rate loads */
   taxOwedIls: number | null
 }
 
