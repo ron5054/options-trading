@@ -3,6 +3,7 @@ import {
   fetchOptionPrices,
   type OptionPriceRequest,
 } from './fetchOptionPrices'
+import { fetchStockQuote } from './fetchStockQuote'
 
 const readBody = (req: IncomingMessage): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -45,18 +46,53 @@ export const handleOptionPricesRequest = async (
   }
 }
 
+export const handleStockQuoteRequest = async (
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> => {
+  if (req.method !== 'GET') {
+    sendJson(res, 405, { error: 'Method not allowed' })
+    return
+  }
+
+  try {
+    const url = new URL(req.url ?? '/', 'http://localhost')
+    const symbol = url.searchParams.get('symbol') ?? ''
+    if (!symbol.trim()) {
+      sendJson(res, 400, { error: 'symbol is required' })
+      return
+    }
+
+    const quote = await fetchStockQuote(symbol)
+    sendJson(res, 200, quote)
+  } catch (error) {
+    sendJson(res, 500, {
+      error:
+        error instanceof Error ? error.message : 'Failed to fetch stock quote',
+    })
+  }
+}
+
 export const optionPricesApiMiddleware = (
   req: IncomingMessage,
   res: ServerResponse,
   next: () => void,
 ): void => {
   const path = req.url?.split('?')[0]
-  if (path !== '/api/option-prices') {
-    next()
+
+  if (path === '/api/option-prices') {
+    handleOptionPricesRequest(req, res).catch(() => {
+      sendJson(res, 500, { error: 'Failed to fetch option prices' })
+    })
     return
   }
 
-  handleOptionPricesRequest(req, res).catch(() => {
-    sendJson(res, 500, { error: 'Failed to fetch option prices' })
-  })
+  if (path === '/api/stock-quote') {
+    handleStockQuoteRequest(req, res).catch(() => {
+      sendJson(res, 500, { error: 'Failed to fetch stock quote' })
+    })
+    return
+  }
+
+  next()
 }

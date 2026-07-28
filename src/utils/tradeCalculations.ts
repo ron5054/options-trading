@@ -1,4 +1,5 @@
 import { buildPositionMap, isOpenShort } from './matchPositions'
+import { getTradeDate } from './tradeDate'
 import type { Trade } from '../types/trade'
 
 export const TAX_RATE = 0.25
@@ -53,6 +54,46 @@ export const calcTradeSummary = (trades: Trade[]): TradeSummary => {
     tax,
     afterTax,
     tradeCount: trades.length,
+  }
+}
+
+export type SymbolSummary = {
+  symbol: string
+  netTotal: number
+  commissions: number
+  premiumAfterCommissions: number
+  tradeCount: number
+  contractCount: number
+  firstTradeDate: string | null
+  openCapitalAtRisk: number
+}
+
+export const calcSymbolSummary = (
+  trades: Trade[],
+  symbol: string,
+): SymbolSummary => {
+  const normalized = symbol.toUpperCase()
+  const symbolTrades = trades.filter(
+    (trade) => trade.symbol.toUpperCase() === normalized,
+  )
+  const summary = calcTradeSummary(symbolTrades)
+  const firstTradeDate =
+    symbolTrades.length === 0
+      ? null
+      : symbolTrades.reduce((earliest, trade) => {
+          const date = getTradeDate(trade)
+          return date < earliest ? date : earliest
+        }, getTradeDate(symbolTrades[0]))
+
+  return {
+    symbol: normalized,
+    netTotal: summary.netTotal,
+    commissions: summary.commissions,
+    premiumAfterCommissions: summary.netAfterCommissions,
+    tradeCount: summary.tradeCount,
+    contractCount: summary.contractCount,
+    firstTradeDate,
+    openCapitalAtRisk: calcOpenCapitalAtRisk(symbolTrades),
   }
 }
 

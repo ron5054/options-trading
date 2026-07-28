@@ -2,6 +2,12 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fetchUsdToIls, type UsdToIlsRate } from '../api/exchangeRate'
 import { fetchOptionPrices } from '../api/optionPrices'
 import { deleteTrade } from '../db/trades'
+import {
+  addShareLot,
+  closeShareLots,
+  deleteShareLot,
+  type ShareLot,
+} from '../db/shareLots'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { buildPositionMap, isOpenShort } from '../utils/matchPositions'
 import type { ClosePositionContext } from './TradeDrawer'
@@ -21,15 +27,25 @@ import {
   formatCurrency,
   formatIls,
 } from '../utils/tradeCalculations'
+import {
+  calcAssignmentBasisPerShare,
+  calcAssignmentShareQuantity,
+  canMarkAssigned,
+  canMarkCalledAway,
+  pickLotsToClose,
+} from '../utils/shareLots'
 import type { Trade } from '../types/trade'
+import { SymbolDrawer } from './SymbolDrawer'
 import { TaxCashCard } from './TaxCashCard'
 
 type TradesTableProps = {
   trades: Trade[]
+  shareLots: ShareLot[]
   canEdit?: boolean
   onEdit: (trade: Trade) => void
   onClosePosition: (context: ClosePositionContext) => void
   onTradeDeleted: () => void
+  onShareLotsChanged: () => void
 }
 
 type SortableHeaderProps = {
@@ -71,10 +87,14 @@ type RowActionsProps = {
   isOpenSell: boolean
   primaryOpenSell: Trade | undefined
   primaryOpenQty: number
+  canAssign: boolean
+  canCallAway: boolean
   trade: Trade
   onClosePosition: (context: ClosePositionContext) => void
   onEdit: (trade: Trade) => void
   onDelete: (id: string, symbol: string) => void
+  onAssign: (trade: Trade) => void
+  onCallAway: (trade: Trade) => void
 }
 
 const RowActions = ({
@@ -83,10 +103,14 @@ const RowActions = ({
   isOpenSell,
   primaryOpenSell,
   primaryOpenQty,
+  canAssign,
+  canCallAway,
   trade,
   onClosePosition,
   onEdit,
   onDelete,
+  onAssign,
+  onCallAway,
 }: RowActionsProps) => (
   <div className="action-buttons">
     {isGrouped ? (
@@ -108,6 +132,30 @@ const RowActions = ({
             }}
           >
             Close
+          </button>
+        )}
+        {canAssign && (
+          <button
+            type="button"
+            className="assign-btn"
+            onClick={(event) => {
+              event.stopPropagation()
+              onAssign(trade)
+            }}
+          >
+            Assign
+          </button>
+        )}
+        {canCallAway && (
+          <button
+            type="button"
+            className="callaway-btn"
+            onClick={(event) => {
+              event.stopPropagation()
+              onCallAway(trade)
+            }}
+          >
+            Called away
           </button>
         )}
         <button
@@ -137,10 +185,12 @@ const RowActions = ({
 
 export const TradesTable = ({
   trades,
+  shareLots,
   canEdit = false,
   onEdit,
   onClosePosition,
   onTradeDeleted,
+  onShareLotsChanged,
 }: TradesTableProps) => {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -154,6 +204,7 @@ export const TradesTable = ({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [groupByContract, setGroupByContract] = useState(true)
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
   useEffect(() => {
     fetchUsdToIls()
@@ -170,6 +221,66 @@ export const TradesTable = ({
 
     await deleteTrade(id)
     onTradeDeleted()
+  }
+
+  const handleAssign = async (trade: Trade) => {
+    const openQty = positionMap.get(trade.id)?.openQty ?? 0
+    if (openQty <= 0) return
+
+    const shares = calcAssignmentShareQuantity(openQty)
+    const basis = calcAssignmentBasisPerShare(trade)
+    if (
+      !window.confirm(
+        `Mark ${trade.symbol} assigned?\n${shares} shares @ $${basis.toFixed(2)} (assignment strike)`,
+      )
+    ) {
+      return
+    }
+
+    await addShareLot({
+      symbol: trade.symbol,
+      quantity: shares,
+      basisPerShare: basis,
+      assignedAt: trade.expireDate,
+      assignedFromTradeId: trade.id,
+    })
+    onShareLotsChanged()
+  }
+
+  const handleCallAway = async (trade: Trade) => {
+    const openQty = positionMap.get(trade.id)?.openQty ?? 0
+    const sharesNeeded = openQty * 100
+    const lotsToClose = pickLotsToClose(shareLots, trade.symbol, sharesNeeded)
+    if (lotsToClose.length === 0) return
+
+    const sharesClosing = lotsToClose.reduce((sum, lot) => sum + lot.quantity, 0)
+    if (
+      !window.confirm(
+        `Mark ${trade.symbol} called away via $${trade.strike} call?\nCloses ${sharesClosing} shares (${lotsToClose.length} lot${lotsToClose.length === 1 ? '' : 's'}).`,
+      )
+    ) {
+      return
+    }
+
+    await closeShareLots(
+      lotsToClose.map((lot) => lot.id),
+      trade.expireDate,
+      trade.id,
+    )
+    onShareLotsChanged()
+  }
+
+  const handleRemoveAssignment = async (lot: ShareLot) => {
+    if (
+      !window.confirm(
+        `Remove assignment for ${lot.symbol}?\nThis deletes the open share lot.`,
+      )
+    ) {
+      return
+    }
+
+    await deleteShareLot(lot.id)
+    onShareLotsChanged()
   }
 
   const positionMap = useMemo(() => buildPositionMap(trades), [trades])
@@ -471,10 +582,14 @@ export const TradesTable = ({
                 isOpenSell={isOpenSell}
                 primaryOpenSell={primaryOpenSell}
                 primaryOpenQty={primaryOpenQty}
+                canAssign={canMarkAssigned(trade, positionMap, shareLots)}
+                canCallAway={canMarkCalledAway(trade, positionMap, shareLots)}
                 trade={trade}
                 onClosePosition={onClosePosition}
                 onEdit={onEdit}
                 onDelete={handleDelete}
+                onAssign={handleAssign}
+                onCallAway={handleCallAway}
               />
             ) : null
 
@@ -508,7 +623,16 @@ export const TradesTable = ({
                       ›
                     </span>
                   )}
-                  {trade.symbol}
+                  <button
+                    type="button"
+                    className="symbol-link"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSelectedSymbol(trade.symbol)
+                    }}
+                  >
+                    {trade.symbol}
+                  </button>
                 </span>
               </td>
               <td className="col-detail">{formatCurrency(trade.strike)}</td>
@@ -752,6 +876,14 @@ export const TradesTable = ({
         </tfoot>
       </table>
       </div>
+      <SymbolDrawer
+        symbol={selectedSymbol}
+        trades={trades}
+        shareLots={shareLots}
+        canEdit={canEdit}
+        onClose={() => setSelectedSymbol(null)}
+        onRemoveAssignment={handleRemoveAssignment}
+      />
     </div>
   )
 }

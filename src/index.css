@@ -650,6 +650,175 @@ header h1 {
   font-weight: 600;
 }
 
+.symbol-link {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.symbol-link:hover {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
+}
+
+.symbol-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.symbol-summary-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.symbol-summary-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.symbol-summary-value {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.symbol-summary-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.symbol-summary-breakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.symbol-summary-breakdown > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.symbol-summary-breakdown dt {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.symbol-summary-breakdown dd {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-summary-risk {
+  grid-column: 1 / -1;
+}
+
+.symbol-holding {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.symbol-holding-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.symbol-holding-line {
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-holding-mtm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.symbol-holding-mtm .symbol-holding-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.symbol-holding-pct {
+  font-size: 1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-holding-breakeven {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.symbol-holding-breakeven .symbol-holding-pct {
+  font-size: 0.95rem;
+}
+
+.symbol-holding-quote-error {
+  font-size: 0.85rem;
+  color: var(--error);
+}
+
+.symbol-holding-lots {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.symbol-holding-lots li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-holding-breakdown {
+  padding-top: 0.75rem;
+  border-top: none;
+}
+
+.symbol-holding-cc {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.symbol-holding-remove {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
 .trades-table .type {
   font-size: 0.8rem;
   font-weight: 600;
@@ -745,6 +914,23 @@ header h1 {
 
 .close-btn:hover {
   background: rgba(34, 197, 94, 0.1);
+}
+
+.assign-btn,
+.callaway-btn {
+  padding: 0.3rem 0.65rem;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.assign-btn:hover,
+.callaway-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .close-banner {

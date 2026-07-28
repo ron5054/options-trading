@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { seedTrades, tradeKey } from './data/seedTrades'
+import { getAllShareLots, type ShareLot } from './db/shareLots'
 import { getAllTrades, seedTradesDeduped } from './db/trades'
 import { AuthBar } from './components/AuthBar'
 import {
@@ -19,29 +20,39 @@ export const App = () => {
   const { user, isLoading: isAuthLoading, canEdit, signIn, signOut } = useAuth()
   const { page, setPage } = useHashPage()
   const [trades, setTrades] = useState<Trade[]>([])
+  const [shareLots, setShareLots] = useState<ShareLot[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
   const [closingPosition, setClosingPosition] =
     useState<ClosePositionContext | null>(null)
 
-  const loadTrades = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       if (canEdit) {
         await seedTradesDeduped(seedTrades, isDuplicateTrade)
       }
-      const data = await getAllTrades()
-      setTrades(data)
+      const [tradeData, lotData] = await Promise.all([
+        getAllTrades(),
+        getAllShareLots(),
+      ])
+      setTrades(tradeData)
+      setShareLots(lotData)
     } finally {
       setIsLoading(false)
     }
   }, [canEdit])
 
+  const loadShareLots = useCallback(async () => {
+    const lotData = await getAllShareLots()
+    setShareLots(lotData)
+  }, [])
+
   useEffect(() => {
     if (isAuthLoading) return
-    void loadTrades()
-  }, [isAuthLoading, loadTrades])
+    void loadData()
+  }, [isAuthLoading, loadData])
 
   const openAddDrawer = () => {
     if (!canEdit) return
@@ -72,7 +83,7 @@ export const App = () => {
 
   const handleSaved = () => {
     closeDrawer()
-    void loadTrades()
+    void loadData()
   }
 
   return (
@@ -135,10 +146,12 @@ export const App = () => {
           ) : (
             <TradesTable
               trades={trades}
+              shareLots={shareLots}
               canEdit={canEdit}
               onEdit={handleEdit}
               onClosePosition={handleClosePosition}
-              onTradeDeleted={loadTrades}
+              onTradeDeleted={loadData}
+              onShareLotsChanged={loadShareLots}
             />
           )}
         </section>
