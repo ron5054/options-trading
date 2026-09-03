@@ -3,9 +3,11 @@ import { fetchStockQuote } from '../api/stockQuote'
 import { getClosedShareLotsForSymbol, type ShareLot } from '../db/shareLots'
 import { buildPositionMap } from '../utils/matchPositions'
 import {
+  calcClosedLotStockResult,
   calcHoldingMarkToMarket,
   calcHoldingSummary,
   calcPremiumBreakEven,
+  calcRealizedStockPnl,
 } from '../utils/shareLots'
 import {
   calcSymbolSummary,
@@ -62,6 +64,16 @@ export const SymbolDrawer = ({
     if (!symbol) return []
     return getClosedShareLotsForSymbol(shareLots, symbol)
   }, [symbol, shareLots])
+
+  const closedLotResults = useMemo(
+    () => closedLots.map((lot) => calcClosedLotStockResult(lot, trades)),
+    [closedLots, trades],
+  )
+
+  const realizedStockPnl = useMemo(
+    () => calcRealizedStockPnl(closedLots, trades),
+    [closedLots, trades],
+  )
 
   const openOptions = useMemo(() => {
     if (!symbol) return []
@@ -214,6 +226,37 @@ export const SymbolDrawer = ({
                     <dd>{formatCurrency(summary.openCapitalAtRisk)}</dd>
                   </div>
                 )}
+                {closedLots.length > 0 && (
+                  <>
+                    <div className="symbol-summary-risk">
+                      <dt>Realized stock</dt>
+                      <dd
+                        className={
+                          realizedStockPnl >= 0
+                            ? 'total-positive'
+                            : 'total-negative'
+                        }
+                      >
+                        {formatCurrency(realizedStockPnl)}
+                      </dd>
+                    </div>
+                    <div className="symbol-summary-risk">
+                      <dt>Premium + stock</dt>
+                      <dd
+                        className={
+                          summary.premiumAfterCommissions + realizedStockPnl >=
+                          0
+                            ? 'total-positive'
+                            : 'total-negative'
+                        }
+                      >
+                        {formatCurrency(
+                          summary.premiumAfterCommissions + realizedStockPnl,
+                        )}
+                      </dd>
+                    </div>
+                  </>
+                )}
               </dl>
 
               {hasOpenPositions && (
@@ -335,6 +378,16 @@ export const SymbolDrawer = ({
                           position.direction === 'sell' ? 'short' : 'long'
                         const premiumLabel =
                           position.premium >= 0 ? 'credit' : 'debit'
+                        const assignedStockPnl =
+                          holding &&
+                          position.type === 'call' &&
+                          position.direction === 'sell'
+                            ? (position.strike - holding.avgBasisPerShare) *
+                              Math.min(
+                                holding.quantity,
+                                position.openQty * 100,
+                              )
+                            : null
                         return (
                           <li
                             key={`${position.type}-${position.direction}-${position.strike}-${position.expireDate}`}
@@ -351,6 +404,13 @@ export const SymbolDrawer = ({
                                 {position.capitalAtRisk > 0
                                   ? ` · risk ${formatCurrency(position.capitalAtRisk)}`
                                   : ''}
+                                {assignedStockPnl != null
+                                  ? ` · if assigned ${
+                                      assignedStockPnl === 0
+                                        ? 'even on shares'
+                                        : `${formatCurrency(assignedStockPnl)} stock`
+                                    }`
+                                  : ''}
                               </span>
                             </span>
                           </li>
@@ -361,24 +421,51 @@ export const SymbolDrawer = ({
                 </div>
               )}
 
-              {closedLots.length > 0 && (
+              {closedLotResults.length > 0 && (
                 <div className="symbol-holding symbol-holding-history">
                   <h3 className="symbol-holding-title">Past assignments</h3>
+                  <p className="symbol-summary-note">
+                    Stock P&L is call strike minus assignment strike
+                  </p>
                   <ul className="symbol-holding-lots">
-                    {closedLots.map((lot) => (
-                      <li key={lot.id}>
-                        <span>
-                          {lot.quantity} @ {formatCurrency(lot.basisPerShare)}
-                          <span className="symbol-summary-note">
-                            {' '}
-                            · {formatSinceDate(lot.assignedAt)}
-                            {lot.closedAt
-                              ? ` → called away ${formatSinceDate(lot.closedAt)}`
-                              : ''}
+                    {closedLotResults.map(
+                      ({ lot, exitPrice, pnl, pnlPerShare }) => (
+                        <li key={lot.id}>
+                          <span className="symbol-lot-history-main">
+                            {lot.quantity} @ {formatCurrency(lot.basisPerShare)}
+                            <span className="symbol-summary-note">
+                              {' '}
+                              · {formatSinceDate(lot.assignedAt)}
+                              {lot.closedAt
+                                ? ` → called away${
+                                    exitPrice != null
+                                      ? ` ${formatCurrency(exitPrice)}`
+                                      : ''
+                                  } ${formatSinceDate(lot.closedAt)}`
+                                : ''}
+                            </span>
                           </span>
-                        </span>
-                      </li>
-                    ))}
+                          {pnl != null && pnlPerShare != null && (
+                            <span
+                              className={[
+                                'symbol-lot-pnl',
+                                pnl > 0
+                                  ? 'total-positive'
+                                  : pnl < 0
+                                    ? 'total-negative'
+                                    : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                            >
+                              {pnl === 0
+                                ? 'even'
+                                : `${formatCurrency(pnl)} (${formatCurrency(pnlPerShare)}/sh)`}
+                            </span>
+                          )}
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </div>
               )}

@@ -126,6 +126,48 @@ export const calcPremiumBreakEven = (
   return avgBasisPerShare - premiumAfterCommissions / quantity
 }
 
+export type ClosedLotStockResult = {
+  lot: ShareLot
+  exitPrice: number | null
+  pnl: number | null
+  pnlPerShare: number | null
+}
+
+/** Shares sold at the covering call strike vs assignment strike. */
+export const calcShareLotStockPnl = (
+  lot: ShareLot,
+  exitPricePerShare: number,
+): number => (exitPricePerShare - lot.basisPerShare) * lot.quantity
+
+export const calcClosedLotStockResult = (
+  lot: ShareLot,
+  trades: Trade[],
+): ClosedLotStockResult => {
+  const closer = lot.closedByTradeId
+    ? trades.find((trade) => trade.id === lot.closedByTradeId)
+    : undefined
+  if (!closer) {
+    return { lot, exitPrice: null, pnl: null, pnlPerShare: null }
+  }
+
+  const pnlPerShare = closer.strike - lot.basisPerShare
+  return {
+    lot,
+    exitPrice: closer.strike,
+    pnl: calcShareLotStockPnl(lot, closer.strike),
+    pnlPerShare,
+  }
+}
+
+export const calcRealizedStockPnl = (
+  lots: ShareLot[],
+  trades: Trade[],
+): number =>
+  lots.reduce((sum, lot) => {
+    const { pnl } = calcClosedLotStockResult(lot, trades)
+    return sum + (pnl ?? 0)
+  }, 0)
+
 export const calcHoldingSummary = (
   lots: ShareLot[],
   symbol: string,

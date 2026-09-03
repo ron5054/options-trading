@@ -841,7 +841,21 @@ header h1 {
 }
 
 .symbol-holding-history .symbol-holding-lots li {
-  justify-content: flex-start;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.symbol-lot-history-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0;
+}
+
+.symbol-lot-pnl {
+  font-weight: 650;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .trades-table .type {
