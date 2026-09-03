@@ -150,3 +150,12 @@ export const isOpenShort = (
     !isExpired(trade)
   )
 }
+
+export const isOpenLong = (
+  trade: Trade,
+  positionMap: Map<string, TradePositionInfo>,
+): boolean => {
+  if (trade.direction !== 'buy' || isExpired(trade)) return false
+  const matched = positionMap.get(trade.id)?.matchedQty ?? 0
+  return matched < trade.quantity
+}

@@ -224,6 +224,7 @@ export const TradesTable = ({
   }
 
   const handleAssign = async (trade: Trade) => {
+    if (!canMarkAssigned(trade, positionMap, shareLots)) return
     const openQty = positionMap.get(trade.id)?.openQty ?? 0
     if (openQty <= 0) return
 
@@ -248,9 +249,15 @@ export const TradesTable = ({
   }
 
   const handleCallAway = async (trade: Trade) => {
+    if (!canMarkCalledAway(trade, positionMap, shareLots)) return
     const openQty = positionMap.get(trade.id)?.openQty ?? 0
     const sharesNeeded = openQty * 100
-    const lotsToClose = pickLotsToClose(shareLots, trade.symbol, sharesNeeded)
+    const lotsToClose = pickLotsToClose(
+      shareLots,
+      trade.symbol,
+      sharesNeeded,
+      trade.expireDate,
+    )
     if (lotsToClose.length === 0) return
 
     const sharesClosing = lotsToClose.reduce((sum, lot) => sum + lot.quantity, 0)

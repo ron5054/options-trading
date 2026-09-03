@@ -4,6 +4,7 @@ import {
 } from '../db/shareLots'
 import type { Trade } from '../types/trade'
 import type { TradePositionInfo } from './matchPositions'
+import { isExpireDatePassed } from './tradeDate'
 
 export const calcAssignmentBasisPerShare = (putTrade: Trade): number =>
   putTrade.strike
@@ -11,12 +12,26 @@ export const calcAssignmentBasisPerShare = (putTrade: Trade): number =>
 export const calcAssignmentShareQuantity = (openQty: number): number =>
   openQty * 100
 
+const wasAlreadyCalledAway = (trade: Trade, lots: ShareLot[]): boolean =>
+  lots.some((lot) => lot.closedByTradeId === trade.id)
+
+/** Open lots that already existed when this call expired. */
+const getLotsEligibleToCallAway = (
+  lots: ShareLot[],
+  symbol: string,
+  callExpireDate: string,
+): ShareLot[] =>
+  getOpenShareLotsForSymbol(lots, symbol).filter(
+    (lot) => lot.assignedAt <= callExpireDate,
+  )
+
 export const canMarkAssigned = (
   trade: Trade,
   positionMap: Map<string, TradePositionInfo>,
   lots: ShareLot[],
 ): boolean => {
   if (trade.direction !== 'sell' || trade.type !== 'put') return false
+  if (!isExpireDatePassed(trade.expireDate)) return false
   const openQty = positionMap.get(trade.id)?.openQty ?? 0
   if (openQty <= 0) return false
   return !lots.some((lot) => lot.assignedFromTradeId === trade.id)
@@ -28,11 +43,17 @@ export const canMarkCalledAway = (
   lots: ShareLot[],
 ): boolean => {
   if (trade.direction !== 'sell' || trade.type !== 'call') return false
+  if (!isExpireDatePassed(trade.expireDate)) return false
+  if (wasAlreadyCalledAway(trade, lots)) return false
   const openQty = positionMap.get(trade.id)?.openQty ?? 0
   if (openQty <= 0) return false
 
-  const openLots = getOpenShareLotsForSymbol(lots, trade.symbol)
-  const openShares = openLots.reduce((sum, lot) => sum + lot.quantity, 0)
+  const eligibleLots = getLotsEligibleToCallAway(
+    lots,
+    trade.symbol,
+    trade.expireDate,
+  )
+  const openShares = eligibleLots.reduce((sum, lot) => sum + lot.quantity, 0)
   return openShares >= openQty * 100
 }
 
@@ -41,8 +62,12 @@ export const pickLotsToClose = (
   lots: ShareLot[],
   symbol: string,
   sharesNeeded: number,
+  callExpireDate?: string,
 ): ShareLot[] => {
-  const openLots = getOpenShareLotsForSymbol(lots, symbol)
+  const openLots =
+    callExpireDate == null
+      ? getOpenShareLotsForSymbol(lots, symbol)
+      : getLotsEligibleToCallAway(lots, symbol, callExpireDate)
   const selected: ShareLot[] = []
   let remaining = sharesNeeded
 

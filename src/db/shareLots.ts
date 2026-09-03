@@ -110,6 +110,19 @@ export const getOpenShareLotsForSymbol = (
     .sort((a, b) => a.assignedAt.localeCompare(b.assignedAt))
 }
 
+export const getClosedShareLotsForSymbol = (
+  lots: ShareLot[],
+  symbol: string,
+): ShareLot[] => {
+  const normalized = symbol.toUpperCase()
+  return lots
+    .filter(
+      (lot) =>
+        lot.symbol.toUpperCase() === normalized && !isOpenShareLot(lot),
+    )
+    .sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? ''))
+}
+
 /** @deprecated Prefer getOpenShareLotsForSymbol — kept for single-lot call sites */
 export const getOpenShareLotForSymbol = (
   lots: ShareLot[],

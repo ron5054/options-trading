@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchStockQuote } from '../api/stockQuote'
-import type { ShareLot } from '../db/shareLots'
+import { getClosedShareLotsForSymbol, type ShareLot } from '../db/shareLots'
 import { buildPositionMap } from '../utils/matchPositions'
 import {
   calcHoldingMarkToMarket,
@@ -10,6 +10,7 @@ import {
 import {
   calcSymbolSummary,
   formatCurrency,
+  getOpenOptionPositions,
 } from '../utils/tradeCalculations'
 import type { Trade } from '../types/trade'
 
@@ -56,6 +57,18 @@ export const SymbolDrawer = ({
     if (!symbol) return null
     return calcHoldingSummary(shareLots, symbol, trades, positionMap)
   }, [symbol, shareLots, trades, positionMap])
+
+  const closedLots = useMemo(() => {
+    if (!symbol) return []
+    return getClosedShareLotsForSymbol(shareLots, symbol)
+  }, [symbol, shareLots])
+
+  const openOptions = useMemo(() => {
+    if (!symbol) return []
+    return getOpenOptionPositions(trades, symbol, positionMap)
+  }, [symbol, trades, positionMap])
+
+  const hasOpenPositions = holding != null || openOptions.length > 0
 
   const markToMarket = useMemo(() => {
     if (!holding || quotePrice == null) return null
@@ -203,110 +216,170 @@ export const SymbolDrawer = ({
                 )}
               </dl>
 
-              {holding && (
+              {hasOpenPositions && (
                 <div className="symbol-holding">
-                  <h3 className="symbol-holding-title">Holding</h3>
-                  <p className="symbol-holding-line">
-                    {holding.quantity} shares · avg{' '}
-                    {formatCurrency(holding.avgBasisPerShare)}
-                  </p>
-                  <p className="symbol-summary-note">
-                    Total cost {formatCurrency(holding.totalCost)} · since{' '}
-                    {formatSinceDate(holding.firstAssignedAt)} · buy price
-                    (assignment strike)
-                  </p>
+                  <h3 className="symbol-holding-title">Open positions</h3>
 
-                  <div className="symbol-holding-mtm">
-                    {isQuoteLoading && (
-                      <p className="symbol-summary-note">Loading price…</p>
-                    )}
-                    {quoteError && (
-                      <p className="symbol-holding-quote-error">{quoteError}</p>
-                    )}
-                    {markToMarket && (
-                      <>
-                        <p className="symbol-holding-line">
-                          <span
-                            className={
-                              markToMarket.unrealizedPnl >= 0
-                                ? 'total-positive'
-                                : 'total-negative'
-                            }
-                          >
-                            {formatCurrency(markToMarket.unrealizedPnl)}
-                          </span>
-                          <span
-                            className={[
-                              'symbol-holding-pct',
-                              markToMarket.unrealizedPnlPercent >= 0
-                                ? 'total-positive'
-                                : 'total-negative',
-                            ].join(' ')}
-                          >
-                            {formatPercent(markToMarket.unrealizedPnlPercent)}
-                          </span>
-                        </p>
-                        <p className="symbol-summary-note">
-                          Last {formatCurrency(markToMarket.price)} · market{' '}
-                          {formatCurrency(markToMarket.marketValue)} · delayed
-                        </p>
-                      </>
-                    )}
-                  </div>
+                  {holding && (
+                    <div className="symbol-open-position">
+                      <p className="symbol-holding-line">
+                        {holding.quantity} shares · avg{' '}
+                        {formatCurrency(holding.avgBasisPerShare)}
+                      </p>
+                      <p className="symbol-summary-note">
+                        Total cost {formatCurrency(holding.totalCost)} · since{' '}
+                        {formatSinceDate(holding.firstAssignedAt)} · buy price
+                        (assignment strike)
+                      </p>
 
+                      <div className="symbol-holding-mtm">
+                        {isQuoteLoading && (
+                          <p className="symbol-summary-note">Loading price…</p>
+                        )}
+                        {quoteError && (
+                          <p className="symbol-holding-quote-error">
+                            {quoteError}
+                          </p>
+                        )}
+                        {markToMarket && (
+                          <>
+                            <p className="symbol-holding-line">
+                              <span
+                                className={
+                                  markToMarket.unrealizedPnl >= 0
+                                    ? 'total-positive'
+                                    : 'total-negative'
+                                }
+                              >
+                                {formatCurrency(markToMarket.unrealizedPnl)}
+                              </span>
+                              <span
+                                className={[
+                                  'symbol-holding-pct',
+                                  markToMarket.unrealizedPnlPercent >= 0
+                                    ? 'total-positive'
+                                    : 'total-negative',
+                                ].join(' ')}
+                              >
+                                {formatPercent(
+                                  markToMarket.unrealizedPnlPercent,
+                                )}
+                              </span>
+                            </p>
+                            <p className="symbol-summary-note">
+                              Last {formatCurrency(markToMarket.price)} ·
+                              market {formatCurrency(markToMarket.marketValue)}{' '}
+                              · delayed
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      <ul className="symbol-holding-lots">
+                        {holding.lots.map((lot) => (
+                          <li key={lot.id}>
+                            <span>
+                              {lot.quantity} @{' '}
+                              {formatCurrency(lot.basisPerShare)}
+                              <span className="symbol-summary-note">
+                                {' '}
+                                · {formatSinceDate(lot.assignedAt)}
+                              </span>
+                            </span>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="delete-btn"
+                                onClick={() => onRemoveAssignment(lot)}
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <dl className="symbol-summary-breakdown symbol-holding-breakdown">
+                        <div className="symbol-summary-risk">
+                          <dt>Break-even after all-time premium</dt>
+                          <dd className="symbol-holding-breakeven">
+                            {premiumBreakEven != null
+                              ? formatCurrency(premiumBreakEven)
+                              : '—'}
+                            {premiumBreakEven != null && quotePrice != null && (
+                              <span
+                                className={[
+                                  'symbol-holding-pct',
+                                  quotePrice - premiumBreakEven >= 0
+                                    ? 'total-positive'
+                                    : 'total-negative',
+                                ].join(' ')}
+                              >
+                                {formatPercent(
+                                  ((quotePrice - premiumBreakEven) /
+                                    premiumBreakEven) *
+                                    100,
+                                )}
+                              </span>
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  )}
+
+                  {openOptions.length > 0 && (
+                    <ul className="symbol-holding-lots symbol-open-options">
+                      {openOptions.map((position) => {
+                        const role =
+                          position.direction === 'sell' ? 'short' : 'long'
+                        const premiumLabel =
+                          position.premium >= 0 ? 'credit' : 'debit'
+                        return (
+                          <li
+                            key={`${position.type}-${position.direction}-${position.strike}-${position.expireDate}`}
+                          >
+                            <span>
+                              {position.openQty} ×{' '}
+                              {formatCurrency(position.strike)} {role}{' '}
+                              {position.type}
+                              <span className="symbol-summary-note">
+                                {' '}
+                                · expire {formatSinceDate(position.expireDate)}{' '}
+                                · {premiumLabel}{' '}
+                                {formatCurrency(Math.abs(position.premium))}
+                                {position.capitalAtRisk > 0
+                                  ? ` · risk ${formatCurrency(position.capitalAtRisk)}`
+                                  : ''}
+                              </span>
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {closedLots.length > 0 && (
+                <div className="symbol-holding symbol-holding-history">
+                  <h3 className="symbol-holding-title">Past assignments</h3>
                   <ul className="symbol-holding-lots">
-                    {holding.lots.map((lot) => (
+                    {closedLots.map((lot) => (
                       <li key={lot.id}>
                         <span>
                           {lot.quantity} @ {formatCurrency(lot.basisPerShare)}
                           <span className="symbol-summary-note">
                             {' '}
                             · {formatSinceDate(lot.assignedAt)}
+                            {lot.closedAt
+                              ? ` → called away ${formatSinceDate(lot.closedAt)}`
+                              : ''}
                           </span>
                         </span>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            className="delete-btn"
-                            onClick={() => onRemoveAssignment(lot)}
-                          >
-                            Remove
-                          </button>
-                        )}
                       </li>
                     ))}
                   </ul>
-
-                  <dl className="symbol-summary-breakdown symbol-holding-breakdown">
-                    <div className="symbol-summary-risk">
-                      <dt>Break-even after all-time premium</dt>
-                      <dd className="symbol-holding-breakeven">
-                        {premiumBreakEven != null
-                          ? formatCurrency(premiumBreakEven)
-                          : '—'}
-                        {premiumBreakEven != null && quotePrice != null && (
-                          <span
-                            className={[
-                              'symbol-holding-pct',
-                              quotePrice - premiumBreakEven >= 0
-                                ? 'total-positive'
-                                : 'total-negative',
-                            ].join(' ')}
-                          >
-                            {formatPercent(
-                              ((quotePrice - premiumBreakEven) /
-                                premiumBreakEven) *
-                                100,
-                            )}
-                          </span>
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {holding.hasOpenCoveredCall && (
-                    <p className="symbol-holding-cc">Open covered call</p>
-                  )}
                 </div>
               )}
             </div>
