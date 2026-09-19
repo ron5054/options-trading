@@ -131,7 +131,7 @@ export const App = () => {
 
       {page === 'stats' ? (
         <section className="card card-stats">
-          <h2>Monthly Revenue</h2>
+          <h2>Statistics</h2>
           {isLoading ? (
             <p className="loading">Loading chart...</p>
           ) : (

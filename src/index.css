@@ -362,6 +362,66 @@ header h1 {
   margin-bottom: 1rem;
 }
 
+.search-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-filter-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-filter input {
+  width: min(18rem, 70vw);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.search-filter input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.search-filter input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-filter input::-webkit-search-decoration,
+.search-filter input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.search-filter-clear {
+  position: absolute;
+  right: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.search-filter-clear:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.search-filter-field.has-query input {
+  padding-right: 3.25rem;
+}
+
 .update-prices-btn {
   padding: 0.5rem 1rem;
   background: transparent;
@@ -1206,6 +1266,10 @@ header h1 {
   color: var(--text-muted);
 }
 
+.stats-summary-row {
+  margin-top: 0;
+}
+
 .chart-rate-note {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -1321,6 +1385,16 @@ header h1 {
   .table-toolbar {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .search-filter,
+  .search-filter-field {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .search-filter input {
+    width: 100%;
   }
 
   .stat-total {

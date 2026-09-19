@@ -11,7 +11,11 @@ import {
 } from 'recharts'
 import { fetchUsdToIls, type UsdToIlsRate } from '../api/exchangeRate'
 import { getMonthlyRevenue, type MonthlyRevenue } from '../utils/monthlyRevenue'
-import { formatCurrency, formatIls } from '../utils/tradeCalculations'
+import {
+  calcTradeSummary,
+  formatCurrency,
+  formatIls,
+} from '../utils/tradeCalculations'
 import type { Trade } from '../types/trade'
 
 type MonthlyRevenueChartProps = {
@@ -90,11 +94,54 @@ const formatYAxisIls = (value: number): string =>
     maximumFractionDigits: 1,
   }).format(value)
 
+const AllTimePremiumsIls = ({
+  netTotal,
+  exchangeRate,
+  rateError,
+}: {
+  netTotal: number
+  exchangeRate: UsdToIlsRate | null
+  rateError: string | null
+}) => {
+  const netIls = exchangeRate ? netTotal * exchangeRate.rate : null
+
+  return (
+    <div className="trades-stats-row stats-summary-row">
+      <div className="stat-total">
+        <span className="stat-total-label">All-time net premiums (ILS)</span>
+        <span
+          className={[
+            'stat-total-value',
+            netIls == null
+              ? ''
+              : netIls >= 0
+                ? 'total-positive'
+                : 'total-negative',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {netIls != null ? formatIls(netIls) : '—'}
+        </span>
+        <span className="stat-total-note">
+          {formatCurrency(netTotal)} USD
+          {exchangeRate
+            ? ` · BOI rate ${exchangeRate.rate.toFixed(2)} (${exchangeRate.date})`
+            : rateError
+              ? ` · ${rateError}`
+              : ' · loading USD/ILS rate'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
   const [exchangeRate, setExchangeRate] = useState<UsdToIlsRate | null>(null)
   const [rateError, setRateError] = useState<string | null>(null)
 
   const data = useMemo(() => getMonthlyRevenue(trades), [trades])
+  const { netTotal } = useMemo(() => calcTradeSummary(trades), [trades])
 
   const chartData = useMemo(() => {
     if (!exchangeRate) return []
@@ -112,8 +159,15 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
 
   if (data.length === 0) {
     return (
-      <div className="empty-state">
-        <p>No trades to chart yet.</p>
+      <div>
+        <AllTimePremiumsIls
+          netTotal={netTotal}
+          exchangeRate={exchangeRate}
+          rateError={rateError}
+        />
+        <div className="empty-state">
+          <p>No trades to chart yet.</p>
+        </div>
       </div>
     )
   }
@@ -121,6 +175,11 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
   if (!exchangeRate) {
     return (
       <div>
+        <AllTimePremiumsIls
+          netTotal={netTotal}
+          exchangeRate={exchangeRate}
+          rateError={rateError}
+        />
         {rateError ? (
           <p className="price-error">{rateError}</p>
         ) : (
@@ -132,6 +191,11 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
 
   return (
     <div>
+      <AllTimePremiumsIls
+        netTotal={netTotal}
+        exchangeRate={exchangeRate}
+        rateError={rateError}
+      />
       <p className="chart-rate-note">
         After tax (ILS) · BOI rate {exchangeRate.rate.toFixed(2)} ({exchangeRate.date})
       </p>

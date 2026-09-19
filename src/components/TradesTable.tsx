@@ -203,6 +203,7 @@ export const TradesTable = ({
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [groupByContract, setGroupByContract] = useState(true)
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
@@ -303,11 +304,32 @@ export const TradesTable = ({
   }, [trades, exchangeRate])
 
   const filteredTrades = useMemo(() => {
-    if (statusFilter === 'all') return trades
-    return trades.filter(
-      (trade) => getTradeStatus(trade, positionMap) === statusFilter,
-    )
-  }, [trades, statusFilter, positionMap])
+    const query = searchQuery.trim().toLowerCase()
+
+    return trades.filter((trade) => {
+      if (
+        statusFilter !== 'all' &&
+        getTradeStatus(trade, positionMap) !== statusFilter
+      ) {
+        return false
+      }
+      if (!query) return true
+
+      const haystack = [
+        trade.symbol,
+        trade.type,
+        trade.direction,
+        String(trade.strike),
+        trade.expireDate,
+        getTradeDate(trade),
+        getStatusLabel(getTradeStatus(trade, positionMap)),
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(query)
+    })
+  }, [trades, statusFilter, searchQuery, positionMap])
 
   const openShortTrades = useMemo(
     () => trades.filter((trade) => isOpenShort(trade, positionMap)),
@@ -430,6 +452,33 @@ export const TradesTable = ({
         {canEdit && <TaxCashCard canEdit={canEdit} taxOwedIls={taxOwedIls} />}
       </div>
       <div className="table-toolbar">
+        <div className="search-filter">
+          <label className="status-filter-label" htmlFor="trade-search">
+            Search
+          </label>
+          <div
+            className={`search-filter-field${searchQuery ? ' has-query' : ''}`}
+          >
+            <input
+              id="trade-search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Symbol, strike, date…"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="search-filter-clear"
+                onClick={() => setSearchQuery('')}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
         <div className="status-filter">
           <span className="status-filter-label">Status</span>
           <div className="status-filter-options">
@@ -508,8 +557,15 @@ export const TradesTable = ({
           {sortedDisplayTrades.length === 0 ? (
             <tr>
               <td colSpan={13} className="empty-filter">
-                No {statusFilter === 'all' ? '' : `${getStatusLabel(statusFilter).toLowerCase()} `}
-                trades match this filter.
+                No{' '}
+                {statusFilter === 'all'
+                  ? ''
+                  : `${getStatusLabel(statusFilter).toLowerCase()} `}
+                trades match
+                {searchQuery.trim()
+                  ? ` “${searchQuery.trim()}”`
+                  : ' this filter'}
+                .
               </td>
             </tr>
           ) : (
