@@ -354,7 +354,8 @@ header h1 {
   overflow-x: auto;
 }
 
-.table-toolbar {
+.table-toolbar,
+.stats-toolbar {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -1382,7 +1383,8 @@ header h1 {
     margin-bottom: 0.75rem;
   }
 
-  .table-toolbar {
+  .table-toolbar,
+  .stats-toolbar {
     padding-left: 1rem;
     padding-right: 1rem;
   }

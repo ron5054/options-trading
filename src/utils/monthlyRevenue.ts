@@ -21,6 +21,27 @@ const formatMonthLabel = (month: string): string => {
   })
 }
 
+export type YearFilter = 'all' | number
+
+export const getTradeYears = (trades: Trade[]): number[] => {
+  const years = new Set<number>()
+
+  for (const trade of trades) {
+    years.add(Number(getTradeDate(trade).slice(0, 4)))
+  }
+
+  return [...years].sort((a, b) => b - a)
+}
+
+export const filterTradesByYear = (
+  trades: Trade[],
+  year: YearFilter,
+): Trade[] => {
+  if (year === 'all') return trades
+  const prefix = `${year}-`
+  return trades.filter((trade) => getTradeDate(trade).startsWith(prefix))
+}
+
 export const getMonthlyRevenue = (trades: Trade[]): MonthlyRevenue[] => {
   const byMonth = new Map<string, Trade[]>()
 

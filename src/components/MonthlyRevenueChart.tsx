@@ -10,7 +10,13 @@ import {
   YAxis,
 } from 'recharts'
 import { fetchUsdToIls, type UsdToIlsRate } from '../api/exchangeRate'
-import { getMonthlyRevenue, type MonthlyRevenue } from '../utils/monthlyRevenue'
+import {
+  filterTradesByYear,
+  getMonthlyRevenue,
+  getTradeYears,
+  type MonthlyRevenue,
+  type YearFilter,
+} from '../utils/monthlyRevenue'
 import {
   calcTradeSummary,
   formatCurrency,
@@ -95,36 +101,40 @@ const formatYAxisIls = (value: number): string =>
   }).format(value)
 
 const AllTimePremiumsIls = ({
-  netTotal,
+  afterTax,
   exchangeRate,
   rateError,
+  periodLabel,
 }: {
-  netTotal: number
+  afterTax: number
   exchangeRate: UsdToIlsRate | null
   rateError: string | null
+  periodLabel: string
 }) => {
-  const netIls = exchangeRate ? netTotal * exchangeRate.rate : null
+  const afterTaxIls = exchangeRate ? afterTax * exchangeRate.rate : null
 
   return (
     <div className="trades-stats-row stats-summary-row">
       <div className="stat-total">
-        <span className="stat-total-label">All-time net premiums (ILS)</span>
+        <span className="stat-total-label">
+          {periodLabel} net premiums after commissions and tax (ILS)
+        </span>
         <span
           className={[
             'stat-total-value',
-            netIls == null
+            afterTaxIls == null
               ? ''
-              : netIls >= 0
+              : afterTaxIls >= 0
                 ? 'total-positive'
                 : 'total-negative',
           ]
             .filter(Boolean)
             .join(' ')}
         >
-          {netIls != null ? formatIls(netIls) : '—'}
+          {afterTaxIls != null ? formatIls(afterTaxIls) : '—'}
         </span>
         <span className="stat-total-note">
-          {formatCurrency(netTotal)} USD
+          {formatCurrency(afterTax)} USD after commissions and tax
           {exchangeRate
             ? ` · BOI rate ${exchangeRate.rate.toFixed(2)} (${exchangeRate.date})`
             : rateError
@@ -139,9 +149,22 @@ const AllTimePremiumsIls = ({
 export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
   const [exchangeRate, setExchangeRate] = useState<UsdToIlsRate | null>(null)
   const [rateError, setRateError] = useState<string | null>(null)
+  const [yearFilter, setYearFilter] = useState<YearFilter>('all')
 
-  const data = useMemo(() => getMonthlyRevenue(trades), [trades])
-  const { netTotal } = useMemo(() => calcTradeSummary(trades), [trades])
+  const years = useMemo(() => getTradeYears(trades), [trades])
+  const filteredTrades = useMemo(
+    () => filterTradesByYear(trades, yearFilter),
+    [trades, yearFilter],
+  )
+  const data = useMemo(
+    () => getMonthlyRevenue(filteredTrades),
+    [filteredTrades],
+  )
+  const { afterTax } = useMemo(
+    () => calcTradeSummary(filteredTrades),
+    [filteredTrades],
+  )
+  const periodLabel = yearFilter === 'all' ? 'All-time' : String(yearFilter)
 
   const chartData = useMemo(() => {
     if (!exchangeRate) return []
@@ -157,13 +180,48 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
       .catch(() => setRateError('Could not load USD/ILS rate'))
   }, [])
 
+  useEffect(() => {
+    if (yearFilter !== 'all' && !years.includes(yearFilter)) {
+      setYearFilter('all')
+    }
+  }, [years, yearFilter])
+
+  const yearToolbar = (
+    <div className="stats-toolbar">
+      <div className="status-filter">
+        <span className="status-filter-label">Year</span>
+        <div className="status-filter-options">
+          <button
+            type="button"
+            className={`status-filter-btn ${yearFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setYearFilter('all')}
+          >
+            All time
+          </button>
+          {years.map((year) => (
+            <button
+              key={year}
+              type="button"
+              className={`status-filter-btn ${yearFilter === year ? 'active' : ''}`}
+              onClick={() => setYearFilter(year)}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
   if (data.length === 0) {
     return (
       <div>
+        {yearToolbar}
         <AllTimePremiumsIls
-          netTotal={netTotal}
+          afterTax={afterTax}
           exchangeRate={exchangeRate}
           rateError={rateError}
+          periodLabel={periodLabel}
         />
         <div className="empty-state">
           <p>No trades to chart yet.</p>
@@ -175,10 +233,12 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
   if (!exchangeRate) {
     return (
       <div>
+        {yearToolbar}
         <AllTimePremiumsIls
-          netTotal={netTotal}
+          afterTax={afterTax}
           exchangeRate={exchangeRate}
           rateError={rateError}
+          periodLabel={periodLabel}
         />
         {rateError ? (
           <p className="price-error">{rateError}</p>
@@ -191,10 +251,12 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
 
   return (
     <div>
+      {yearToolbar}
       <AllTimePremiumsIls
-        netTotal={netTotal}
+        afterTax={afterTax}
         exchangeRate={exchangeRate}
         rateError={rateError}
+        periodLabel={periodLabel}
       />
       <p className="chart-rate-note">
         After tax (ILS) · BOI rate {exchangeRate.rate.toFixed(2)} ({exchangeRate.date})
