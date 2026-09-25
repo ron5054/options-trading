@@ -12,7 +12,11 @@ import {
 import { fetchUsdToIls, type UsdToIlsRate } from '../api/exchangeRate'
 import {
   filterTradesByYear,
+  formatShortTradeDate,
+  getElapsedMonths,
+  getFirstTradeDate,
   getMonthlyRevenue,
+  getPeriodEndDate,
   getTradeYears,
   type MonthlyRevenue,
   type YearFilter,
@@ -100,48 +104,89 @@ const formatYAxisIls = (value: number): string =>
     maximumFractionDigits: 1,
   }).format(value)
 
+const PremiumStat = ({
+  label,
+  usd,
+  exchangeRate,
+  note,
+}: {
+  label: string
+  usd: number | null
+  exchangeRate: UsdToIlsRate | null
+  note: string
+}) => {
+  const ils = usd != null && exchangeRate ? usd * exchangeRate.rate : null
+
+  return (
+    <div className="stat-total">
+      <span className="stat-total-label">{label}</span>
+      <span
+        className={[
+          'stat-total-value',
+          ils == null ? '' : ils >= 0 ? 'total-positive' : 'total-negative',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        {ils != null ? formatIls(ils) : '—'}
+      </span>
+      <span className="stat-total-note">{note}</span>
+    </div>
+  )
+}
+
+const rateNote = (
+  exchangeRate: UsdToIlsRate | null,
+  rateError: string | null,
+): string => {
+  if (exchangeRate) {
+    return `BOI rate ${exchangeRate.rate.toFixed(2)} (${exchangeRate.date})`
+  }
+  if (rateError) return rateError
+  return 'loading USD/ILS rate'
+}
+
 const AllTimePremiumsIls = ({
   afterTax,
+  elapsedMonths,
+  firstTradeDate,
   exchangeRate,
   rateError,
   periodLabel,
 }: {
   afterTax: number
+  elapsedMonths: number
+  firstTradeDate: string | null
   exchangeRate: UsdToIlsRate | null
   rateError: string | null
   periodLabel: string
 }) => {
-  const afterTaxIls = exchangeRate ? afterTax * exchangeRate.rate : null
+  const monthlyAfterTax =
+    elapsedMonths > 0 ? afterTax / elapsedMonths : null
+  const fxNote = rateNote(exchangeRate, rateError)
+  const spanNote =
+    firstTradeDate && elapsedMonths > 0
+      ? `from ${formatShortTradeDate(firstTradeDate)} · ${elapsedMonths.toFixed(1)} months`
+      : 'No months to average'
 
   return (
     <div className="trades-stats-row stats-summary-row">
-      <div className="stat-total">
-        <span className="stat-total-label">
-          {periodLabel} net premiums after commissions and tax (ILS)
-        </span>
-        <span
-          className={[
-            'stat-total-value',
-            afterTaxIls == null
-              ? ''
-              : afterTaxIls >= 0
-                ? 'total-positive'
-                : 'total-negative',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          {afterTaxIls != null ? formatIls(afterTaxIls) : '—'}
-        </span>
-        <span className="stat-total-note">
-          {formatCurrency(afterTax)} USD after commissions and tax
-          {exchangeRate
-            ? ` · BOI rate ${exchangeRate.rate.toFixed(2)} (${exchangeRate.date})`
-            : rateError
-              ? ` · ${rateError}`
-              : ' · loading USD/ILS rate'}
-        </span>
-      </div>
+      <PremiumStat
+        label={`${periodLabel} net premiums after commissions and tax (ILS)`}
+        usd={afterTax}
+        exchangeRate={exchangeRate}
+        note={`${formatCurrency(afterTax)} USD after commissions and tax · ${fxNote}`}
+      />
+      <PremiumStat
+        label="Monthly average (ILS)"
+        usd={monthlyAfterTax}
+        exchangeRate={exchangeRate}
+        note={
+          monthlyAfterTax != null
+            ? `${formatCurrency(monthlyAfterTax)} USD / month · ${spanNote}`
+            : spanNote
+        }
+      />
     </div>
   )
 }
@@ -164,6 +209,14 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
     () => calcTradeSummary(filteredTrades),
     [filteredTrades],
   )
+  const firstTradeDate = useMemo(
+    () => getFirstTradeDate(filteredTrades),
+    [filteredTrades],
+  )
+  const elapsedMonths = useMemo(() => {
+    if (!firstTradeDate) return 0
+    return getElapsedMonths(firstTradeDate, getPeriodEndDate(yearFilter))
+  }, [firstTradeDate, yearFilter])
   const periodLabel = yearFilter === 'all' ? 'All-time' : String(yearFilter)
 
   const chartData = useMemo(() => {
@@ -219,6 +272,8 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
         {yearToolbar}
         <AllTimePremiumsIls
           afterTax={afterTax}
+          elapsedMonths={elapsedMonths}
+          firstTradeDate={firstTradeDate}
           exchangeRate={exchangeRate}
           rateError={rateError}
           periodLabel={periodLabel}
@@ -236,6 +291,8 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
         {yearToolbar}
         <AllTimePremiumsIls
           afterTax={afterTax}
+          elapsedMonths={elapsedMonths}
+          firstTradeDate={firstTradeDate}
           exchangeRate={exchangeRate}
           rateError={rateError}
           periodLabel={periodLabel}
@@ -254,6 +311,8 @@ export const MonthlyRevenueChart = ({ trades }: MonthlyRevenueChartProps) => {
       {yearToolbar}
       <AllTimePremiumsIls
         afterTax={afterTax}
+        elapsedMonths={elapsedMonths}
+        firstTradeDate={firstTradeDate}
         exchangeRate={exchangeRate}
         rateError={rateError}
         periodLabel={periodLabel}
