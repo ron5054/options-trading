@@ -821,7 +821,7 @@ export const TradesTable = ({
               <tr className="total-row mobile-footer-row">
                 <td colSpan={13}>
                   <div className="mobile-footer-line">
-                    <span>Commissions ($2/contract)</span>
+                    <span>Commissions ($2/contract, $1 from Oct 2026)</span>
                     <span className="total-negative">
                       {formatCurrency(-commissions)}
                     </span>
@@ -897,7 +897,7 @@ export const TradesTable = ({
               </tr>
               <tr className="total-row">
                 <td colSpan={11}>
-                  Commissions ($2/contract)
+                  Commissions ($2/contract, $1 from Oct 2026)
                 </td>
                 <td className="total-negative">{formatCurrency(-commissions)}</td>
                 <td />

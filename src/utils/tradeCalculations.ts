@@ -8,7 +8,17 @@ import { getTradeDate } from './tradeDate'
 import type { OptionType, Trade, TradeDirection } from '../types/trade'
 
 export const TAX_RATE = 0.25
-export const COMMISSION_PER_CONTRACT = 2
+export const COMMISSION_PER_CONTRACT_BEFORE = 2
+export const COMMISSION_PER_CONTRACT_FROM_OCT_2026 = 1
+export const COMMISSION_RATE_CUTOVER = '2026-10-01'
+
+export const getCommissionPerContract = (tradeDate: string): number =>
+  tradeDate >= COMMISSION_RATE_CUTOVER
+    ? COMMISSION_PER_CONTRACT_FROM_OCT_2026
+    : COMMISSION_PER_CONTRACT_BEFORE
+
+export const calcTradeCommission = (trade: Trade): number =>
+  trade.quantity * getCommissionPerContract(getTradeDate(trade))
 
 export const calcTotal = (trade: Trade): number =>
   trade.cost * trade.quantity * 100
@@ -111,7 +121,10 @@ export const calcTradeSummary = (trades: Trade[]): TradeSummary => {
     (sum, trade) => sum + trade.quantity,
     0,
   )
-  const commissions = contractCount * COMMISSION_PER_CONTRACT
+  const commissions = trades.reduce(
+    (sum, trade) => sum + calcTradeCommission(trade),
+    0,
+  )
   const netAfterCommissions = netTotal - commissions
   const tax = netTotal > 0 ? netTotal * TAX_RATE : 0
   const afterTax = netTotal - commissions - tax
